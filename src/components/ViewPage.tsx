@@ -225,7 +225,6 @@ const ViewPage: React.FC = () => {
         setStrokes={setStrokes}
         setSelectedId={setSelectedId}
         onToolChange={handleToolChange}
-        isViewPage={true}
       />
 
       {/* 플로팅 툴바 */}

@@ -11,8 +11,6 @@ interface ToolbarProps {
   onPenSizeChange: (size: number) => void
   gridSize?: number
   onGridSizeChange?: (size: number) => void
-  canUndo?: boolean
-  canRedo?: boolean
 }
 
 const Toolbar: React.FC<ToolbarProps> = ({
@@ -24,9 +22,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
   onPenColorChange,
   onPenSizeChange,
   gridSize,
-  onGridSizeChange,
-  canUndo = false,
-  canRedo = false
+  onGridSizeChange
 }) => {
   const [showGridDropdown, setShowGridDropdown] = useState(false)
   

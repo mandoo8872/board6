@@ -169,8 +169,6 @@ const AdminPage: React.FC = () => {
         onPenSizeChange={setPenSize}
         gridSize={gridSize}
         onGridSizeChange={handleGridSizeChange}
-        canUndo={undoRedoActions.canUndo}
-        canRedo={undoRedoActions.canRedo}
       />
 
       <PropertiesPanel

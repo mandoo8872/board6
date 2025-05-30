@@ -18,7 +18,6 @@ interface ExtendedCanvasWrapperProps extends Omit<CanvasWrapperProps, 'setShapes
   onPushPull?: (action: 'push' | 'pull') => void
   onCommand?: (command: string) => void
   onToolChange: (tool: DrawingTool) => void
-  isViewPage?: boolean
 }
 
 const CanvasWrapper: React.FC<ExtendedCanvasWrapperProps> = ({
@@ -37,8 +36,7 @@ const CanvasWrapper: React.FC<ExtendedCanvasWrapperProps> = ({
   onLoad,
   onPushPull,
   onCommand,
-  onToolChange,
-  isViewPage = false
+  onToolChange
 }) => {
   const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null)
   const [currentStrokeId, setCurrentStrokeId] = useState<string | null>(null)

@@ -139,7 +139,7 @@ export const useUndoRedo = ({
   }, [shapes, selectedId, addAction])
 
   // 셰이프 업데이트 액션 기록
-  const recordUpdateShape = useCallback((shapeId: string, beforeShape: Shape, afterShape: Shape) => {
+  const recordUpdateShape = useCallback((shapeId: string, _beforeShape: Shape, afterShape: Shape) => {
     addAction(
       'UPDATE_SHAPE',
       { shapes },
