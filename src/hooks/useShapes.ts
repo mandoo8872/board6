@@ -1,6 +1,16 @@
 import { useCallback } from 'react'
-import { Shape, Point } from '../types'
-import { snapPointToGrid, snapToGrid } from '../utils/canvasHelpers'
+import { Shape, Point, DrawingTool } from '../types'
+import { 
+  createRect, 
+  createStroke, 
+  addPointToStroke, 
+  finishStroke, 
+  eraseAtPoint, 
+  moveShape, 
+  resizeShape,
+  bringToFront,
+  sendToBack
+} from '../utils/canvasHelpers'
 import { DEFAULT_SHAPE_WIDTH, DEFAULT_SHAPE_HEIGHT, DEFAULT_FILL_COLOR } from '../utils/constants'
 
 interface UseShapesProps {
@@ -14,7 +24,7 @@ interface UseShapesProps {
 export const useShapes = ({ shapes, setShapes, selectedId, setSelectedId, gridSize }: UseShapesProps) => {
   // 새 사각형 생성
   const createRect = useCallback((point: Point) => {
-    const snappedPoint = snapPointToGrid(point, gridSize)
+    const snappedPoint = createRect(point, gridSize)
     const newRect: Shape = {
       id: Date.now().toString(),
       type: 'rect',
@@ -39,7 +49,7 @@ export const useShapes = ({ shapes, setShapes, selectedId, setSelectedId, gridSi
 
   // 새 텍스트 생성
   const createText = useCallback((point: Point, text: string = 'Text') => {
-    const snappedPoint = snapPointToGrid(point, gridSize)
+    const snappedPoint = createRect(point, gridSize)
     const newText: Shape = {
       id: Date.now().toString(),
       type: 'text',
@@ -67,7 +77,7 @@ export const useShapes = ({ shapes, setShapes, selectedId, setSelectedId, gridSi
 
   // 새 이미지 생성
   const createImage = useCallback((point: Point, imageSrc?: string) => {
-    const snappedPoint = snapPointToGrid(point, gridSize)
+    const snappedPoint = createRect(point, gridSize)
     const newImage: Shape = {
       id: Date.now().toString(),
       type: 'image',

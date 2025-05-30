@@ -32,21 +32,27 @@ const Toolbar: React.FC<ToolbarProps> = ({
   
   const gridSizeOptions = [16, 40, 64, 100, 128]
 
-  const drawingTools: { tool: DrawingTool; label: string; icon: string }[] = [
-    { tool: 'select', label: '선택', icon: '🔺' },
-    { tool: 'pen', label: '펜', icon: '✏️' },
-    { tool: 'eraser', label: '지우개', icon: '🗑️' },
-    { tool: 'rect', label: '사각형', icon: '⬜' }
+  const drawingTools: { command: DrawingTool; label: string; icon: string }[] = [
+    { command: 'select', label: '선택', icon: '👆' },
+    { command: 'pen', label: '펜', icon: '✏️' },
+    { command: 'eraser', label: '지우개', icon: '🧹' },
+    { command: 'rect', label: '사각형', icon: '⬜' }
   ]
 
-  const createTools: { command: CommandTool; label: string; icon: string }[] = [
-    { command: 'text', label: '텍스트', icon: '📝' },
+  const commandTools: { command: CommandTool; label: string; icon: string }[] = [
+    { command: 'undo', label: '실행취소', icon: '↩️' },
+    { command: 'redo', label: '다시실행', icon: '↪️' },
     { command: 'image', label: '이미지', icon: '🖼️' }
   ]
 
-  const editTools: { command: CommandTool; label: string; icon: string; disabled?: boolean }[] = [
-    { command: 'undo', label: '되돌리기', icon: '↶', disabled: !canUndo },
-    { command: 'redo', label: '다시하기', icon: '↷', disabled: !canRedo }
+  const layerTools: { command: CommandTool; label: string; icon: string }[] = [
+    { command: 'bringToFront', label: '앞으로', icon: '⬆️' },
+    { command: 'sendToBack', label: '뒤로', icon: '⬇️' }
+  ]
+
+  const historyTools: { command: CommandTool; label: string; icon: string }[] = [
+    { command: 'undo', label: '실행취소', icon: '↩️' },
+    { command: 'redo', label: '다시실행', icon: '↪️' }
   ]
 
   const fileTools: { command: CommandTool; label: string; icon: string }[] = [
@@ -57,11 +63,6 @@ const Toolbar: React.FC<ToolbarProps> = ({
   const syncTools: { command: CommandTool; label: string; icon: string }[] = [
     { command: 'push', label: 'Push', icon: '📤' },
     { command: 'pull', label: 'Pull', icon: '📥' }
-  ]
-
-  const settingsTools: { command: CommandTool; label: string; icon: string }[] = [
-    { command: 'grid', label: '그리드', icon: '⚏' },
-    { command: 'settings', label: '설정', icon: '⚙️' }
   ]
 
   return (
@@ -85,15 +86,15 @@ const Toolbar: React.FC<ToolbarProps> = ({
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
         <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#666' }}>그리기 도구</div>
         <div style={{ display: 'flex', gap: '5px' }}>
-          {drawingTools.map(({ tool, label, icon }) => (
+          {drawingTools.map(({ command, label, icon }) => (
             <button
-              key={tool}
-              onClick={() => onToolChange(tool)}
+              key={command}
+              onClick={() => onToolChange(command)}
               style={{
                 padding: '8px 12px',
-                border: currentTool === tool ? '2px solid #0066ff' : '1px solid #ccc',
+                border: currentTool === command ? '2px solid #0066ff' : '1px solid #ccc',
                 borderRadius: '4px',
-                backgroundColor: currentTool === tool ? '#f0f8ff' : 'white',
+                backgroundColor: currentTool === command ? '#f0f8ff' : 'white',
                 cursor: 'pointer',
                 display: 'flex',
                 flexDirection: 'column',
@@ -143,11 +144,11 @@ const Toolbar: React.FC<ToolbarProps> = ({
         </div>
       )}
 
-      {/* Create Tools */}
+      {/* Layer Tools */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#666' }}>객체 생성</div>
+        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#666' }}>레이어</div>
         <div style={{ display: 'flex', gap: '5px' }}>
-          {createTools.map(({ command, label, icon }) => (
+          {layerTools.map(({ command, label, icon }) => (
             <button
               key={command}
               onClick={() => onCommand(command)}
@@ -174,30 +175,27 @@ const Toolbar: React.FC<ToolbarProps> = ({
         </div>
       </div>
 
-      {/* Edit Tools */}
+      {/* History Tools */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
         <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#666' }}>편집</div>
         <div style={{ display: 'flex', gap: '5px' }}>
-          {editTools.map(({ command, label, icon, disabled }) => (
+          {commandTools.map(({ command, label, icon }) => (
             <button
               key={command}
-              onClick={() => !disabled && onCommand(command)}
-              disabled={disabled}
+              onClick={() => onCommand(command)}
               style={{
                 padding: '6px 8px',
                 border: '1px solid #ccc',
                 borderRadius: '4px',
-                backgroundColor: disabled ? '#f5f5f5' : 'white',
-                color: disabled ? '#ccc' : '#333',
-                cursor: disabled ? 'not-allowed' : 'pointer',
+                backgroundColor: 'white',
+                cursor: 'pointer',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 gap: '2px',
                 fontSize: '10px',
                 minWidth: '60px',
-                flex: 1,
-                opacity: disabled ? 0.5 : 1
+                flex: 1
               }}
               title={label}
             >

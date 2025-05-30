@@ -10,12 +10,6 @@ interface BaseLayerProps {
   showGrid: boolean
 }
 
-// resize handle 위치 타입
-type ResizeHandlePosition = 
-  | 'top-left' | 'top' | 'top-right'
-  | 'left' | 'right'
-  | 'bottom-left' | 'bottom' | 'bottom-right'
-
 const BaseLayer: React.FC<BaseLayerProps> = ({ 
   shapes, 
   selectedId, 

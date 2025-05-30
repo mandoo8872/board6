@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react'
-import { CanvasWrapperProps, Point, Stroke, DrawingTool } from '../types'
+import React, { useState, useCallback, useRef, useEffect } from 'react'
+import { CanvasWrapperProps, Point, Stroke, DrawingTool, Shape } from '../types'
 import { useStroke } from '../hooks/useStroke'
 import { useShapes } from '../hooks/useShapes'
 import { useUndoRedo } from '../hooks/useUndoRedo'
@@ -9,7 +9,9 @@ import BaseLayer from './BaseLayer'
 import DrawLayer from './DrawLayer'
 import InteractionLayer from './InteractionLayer'
 
-interface ExtendedCanvasWrapperProps extends CanvasWrapperProps {
+interface ExtendedCanvasWrapperProps extends Omit<CanvasWrapperProps, 'setShapes' | 'setStrokes'> {
+  setShapes: React.Dispatch<React.SetStateAction<Shape[]>>
+  setStrokes: React.Dispatch<React.SetStateAction<Stroke[]>>
   onUndoRedoStateChange?: (canUndo: boolean, canRedo: boolean) => void
   onSave?: () => void
   onLoad?: () => void
@@ -164,13 +166,12 @@ const CanvasWrapper: React.FC<ExtendedCanvasWrapperProps> = ({
   const handleDuplicateSelectedShape = useCallback(() => {
     if (!selectedId) return
     
-    const beforeState = undoRedoActions.getCurrentState()
     shapeActions.duplicateShape(selectedId)
     
     // 다음 프레임에서 Undo 기록
     setTimeout(() => {
       const afterState = undoRedoActions.getCurrentState()
-      undoRedoActions.recordBatchAction(beforeState, afterState)
+      undoRedoActions.recordBatchAction(undoRedoActions.getCurrentState(), afterState)
     }, 0)
   }, [selectedId, shapeActions, undoRedoActions])
 
@@ -191,7 +192,6 @@ const CanvasWrapper: React.FC<ExtendedCanvasWrapperProps> = ({
 
   // 셰이프 생성 (Undo 기록 포함)
   const handleCreateRect = useCallback((point: Point): string => {
-    const beforeState = undoRedoActions.getCurrentState()
     const newRectId = shapeActions.createRect(point)
     
     // 다음 프레임에서 Undo 기록
@@ -294,6 +294,17 @@ const CanvasWrapper: React.FC<ExtendedCanvasWrapperProps> = ({
       backgroundColor: 'white'
     }
   }, [])
+
+  // 선택 도구로 자동 전환 타이머
+  const autoSwitchTimerRef = useRef<number | null>(null)
+
+  // 도구 변경 시 타이머 초기화
+  useEffect(() => {
+    if (autoSwitchTimerRef.current) {
+      window.clearTimeout(autoSwitchTimerRef.current)
+      autoSwitchTimerRef.current = null
+    }
+  }, [tool])
 
   return (
     <div style={{

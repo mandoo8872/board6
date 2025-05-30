@@ -22,7 +22,6 @@ interface InteractionLayerProps {
   onDuplicateSelectedShape?: () => void
   onMoveShape?: (shapeId: string, newPosition: Point) => void
   onResizeShape?: (shapeId: string, newSize: { width: number; height: number; x?: number; y?: number }) => void
-  isViewPage?: boolean
 }
 
 // resize handle 위치 타입
@@ -47,8 +46,7 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
   onDeleteSelectedShape,
   onDuplicateSelectedShape,
   onMoveShape,
-  onResizeShape,
-  isViewPage = false
+  onResizeShape
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const isDrawingRef = useRef(false)

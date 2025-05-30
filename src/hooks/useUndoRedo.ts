@@ -178,6 +178,18 @@ export const useUndoRedo = ({
     setRedoStack([])
   }, [])
 
+  const recordShapeAction = useCallback((action: 'CREATE_SHAPE' | 'DELETE_SHAPE' | 'UPDATE_SHAPE', shape: Shape) => {
+    const newAction: UndoRedoAction = {
+      id: Date.now().toString(),
+      type: action,
+      timestamp: Date.now(),
+      beforeState: {},
+      afterState: { shapes: [shape] }
+    }
+    setUndoStack(prev => [...prev, newAction])
+    setRedoStack([])
+  }, [])
+
   return {
     canUndo: undoStack.length > 0,
     canRedo: redoStack.length > 0,
