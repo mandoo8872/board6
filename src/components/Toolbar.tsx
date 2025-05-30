@@ -42,27 +42,13 @@ const Toolbar: React.FC<ToolbarProps> = ({
   const commandTools: { command: CommandTool; label: string; icon: string }[] = [
     { command: 'undo', label: '실행취소', icon: '↩️' },
     { command: 'redo', label: '다시실행', icon: '↪️' },
-    { command: 'image', label: '이미지', icon: '🖼️' }
-  ]
-
-  const layerTools: { command: CommandTool; label: string; icon: string }[] = [
-    { command: 'bringToFront', label: '앞으로', icon: '⬆️' },
-    { command: 'sendToBack', label: '뒤로', icon: '⬇️' }
-  ]
-
-  const historyTools: { command: CommandTool; label: string; icon: string }[] = [
-    { command: 'undo', label: '실행취소', icon: '↩️' },
-    { command: 'redo', label: '다시실행', icon: '↪️' }
-  ]
-
-  const fileTools: { command: CommandTool; label: string; icon: string }[] = [
+    { command: 'image', label: '이미지', icon: '🖼️' },
     { command: 'save', label: '저장', icon: '💾' },
-    { command: 'load', label: '불러오기', icon: '📁' }
-  ]
-
-  const syncTools: { command: CommandTool; label: string; icon: string }[] = [
+    { command: 'load', label: '불러오기', icon: '📁' },
     { command: 'push', label: 'Push', icon: '📤' },
-    { command: 'pull', label: 'Pull', icon: '📥' }
+    { command: 'pull', label: 'Pull', icon: '📥' },
+    { command: 'settings', label: '설정', icon: '⚙️' },
+    { command: 'grid', label: '그리드', icon: '⚏' }
   ]
 
   return (
@@ -144,40 +130,9 @@ const Toolbar: React.FC<ToolbarProps> = ({
         </div>
       )}
 
-      {/* Layer Tools */}
+      {/* History/Command Tools */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#666' }}>레이어</div>
-        <div style={{ display: 'flex', gap: '5px' }}>
-          {layerTools.map(({ command, label, icon }) => (
-            <button
-              key={command}
-              onClick={() => onCommand(command)}
-              style={{
-                padding: '6px 8px',
-                border: '1px solid #ccc',
-                borderRadius: '4px',
-                backgroundColor: 'white',
-                cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '2px',
-                fontSize: '10px',
-                minWidth: '60px',
-                flex: 1
-              }}
-              title={label}
-            >
-              <span style={{ fontSize: '14px' }}>{icon}</span>
-              <span>{label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* History Tools */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#666' }}>편집</div>
+        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#666' }}>명령</div>
         <div style={{ display: 'flex', gap: '5px' }}>
           {commandTools.map(({ command, label, icon }) => (
             <button
@@ -198,69 +153,6 @@ const Toolbar: React.FC<ToolbarProps> = ({
                 flex: 1
               }}
               title={label}
-            >
-              <span style={{ fontSize: '14px' }}>{icon}</span>
-              <span>{label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* File Tools */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#666' }}>파일</div>
-        <div style={{ display: 'flex', gap: '5px' }}>
-          {fileTools.map(({ command, label, icon }) => (
-            <button
-              key={command}
-              onClick={() => onCommand(command)}
-              style={{
-                padding: '6px 8px',
-                border: '1px solid #ccc',
-                borderRadius: '4px',
-                backgroundColor: 'white',
-                cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '2px',
-                fontSize: '10px',
-                minWidth: '60px',
-                flex: 1
-              }}
-              title={label}
-            >
-              <span style={{ fontSize: '14px' }}>{icon}</span>
-              <span>{label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Sync Tools */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#666' }}>동기화</div>
-        <div style={{ display: 'flex', gap: '5px' }}>
-          {syncTools.map(({ command, label, icon }) => (
-            <button
-              key={command}
-              onClick={() => onCommand(command)}
-              style={{
-                padding: '6px 8px',
-                border: '1px solid #007acc',
-                borderRadius: '4px',
-                backgroundColor: '#f0f8ff',
-                cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '2px',
-                fontSize: '10px',
-                minWidth: '60px',
-                flex: 1,
-                color: '#007acc'
-              }}
-              title={command === 'push' ? '현장으로 전송' : '현장에서 받기'}
             >
               <span style={{ fontSize: '14px' }}>{icon}</span>
               <span>{label}</span>

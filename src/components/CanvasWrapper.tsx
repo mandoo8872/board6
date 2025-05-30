@@ -351,7 +351,6 @@ const CanvasWrapper: React.FC<ExtendedCanvasWrapperProps> = ({
           onDuplicateSelectedShape={handleDuplicateSelectedShape}
           onMoveShape={handleMoveShape}
           onResizeShape={handleResizeShape}
-          isViewPage={isViewPage}
         />
       </div>
     </div>
