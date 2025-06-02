@@ -5,10 +5,6 @@ interface ToolbarProps {
   currentTool: DrawingTool
   onToolChange: (tool: DrawingTool) => void
   onCommand: (command: CommandTool) => void
-  penColor: string
-  penSize: number
-  onPenColorChange: (color: string) => void
-  onPenSizeChange: (size: number) => void
   gridSize?: number
   onGridSizeChange?: (size: number) => void
 }
@@ -17,10 +13,6 @@ const Toolbar: React.FC<ToolbarProps> = ({
   currentTool,
   onToolChange,
   onCommand,
-  penColor,
-  penSize,
-  onPenColorChange,
-  onPenSizeChange,
   gridSize,
   onGridSizeChange
 }) => {
@@ -35,157 +27,194 @@ const Toolbar: React.FC<ToolbarProps> = ({
     { command: 'rect', label: '사각형', icon: '⬜' }
   ]
 
-  const commandTools: { command: CommandTool; label: string; icon: string }[] = [
+  const commandToolsRow1: { command: CommandTool; label: string; icon: string }[] = [
     { command: 'undo', label: '실행취소', icon: '↩️' },
     { command: 'redo', label: '다시실행', icon: '↪️' },
-    { command: 'image', label: '이미지', icon: '🖼️' },
+    { command: 'image', label: '이미지', icon: '🖼️' }
+  ];
+  const commandToolsRow2: { command: CommandTool; label: string; icon: string }[] = [
     { command: 'save', label: '저장', icon: '💾' },
     { command: 'load', label: '불러오기', icon: '📁' },
+    { command: 'settings', label: '설정', icon: '⚙️' }
+  ];
+  const commandToolsRow3: { command: CommandTool; label: string; icon: string }[] = [
     { command: 'push', label: 'Push', icon: '📤' },
-    { command: 'pull', label: 'Pull', icon: '📥' },
-    { command: 'settings', label: '설정', icon: '⚙️' },
-    { command: 'grid', label: '그리드', icon: '⚏' }
-  ]
+    { command: 'pull', label: 'Pull', icon: '📥' }
+  ];
 
   return (
     <div style={{
       position: 'absolute',
-      top: '20px',
-      left: '20px',
+      top: '24px',
+      left: '24px',
       zIndex: 1000,
       display: 'flex',
       flexDirection: 'column',
-      gap: '12px',
+      gap: '28px',
       backgroundColor: 'white',
-      padding: '16px',
-      borderRadius: '8px',
-      boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+      padding: '24px',
+      borderRadius: '16px',
+      boxShadow: '0 4px 16px rgba(0,0,0,0.10)',
       border: '1px solid #e0e0e0',
-      maxWidth: '240px'
+      maxWidth: '280px',
+      minWidth: '210px',
+      alignItems: 'stretch'
     }}>
-      
-      {/* Drawing Tools */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#666' }}>그리기 도구</div>
-        <div style={{ display: 'flex', gap: '5px' }}>
+      {/* 그리기 도구 */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ fontSize: '15px', fontWeight: 700, color: '#555', marginBottom: '2px' }}>그리기 도구</div>
+        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-start' }}>
           {drawingTools.map(({ command, label, icon }) => (
             <button
               key={command}
               onClick={() => onToolChange(command)}
               style={{
-                padding: '8px 12px',
+                padding: '14px 0 8px 0',
                 border: currentTool === command ? '2px solid #0066ff' : '1px solid #ccc',
-                borderRadius: '4px',
+                borderRadius: '10px',
                 backgroundColor: currentTool === command ? '#f0f8ff' : 'white',
                 cursor: 'pointer',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: '2px',
-                fontSize: '11px',
-                minWidth: '50px'
+                gap: '6px',
+                fontSize: '14px',
+                minWidth: '54px',
+                minHeight: '62px',
+                boxSizing: 'border-box',
+                fontWeight: 600
               }}
               title={label}
             >
-              <span style={{ fontSize: '16px' }}>{icon}</span>
+              <span style={{ fontSize: '24px' }}>{icon}</span>
               <span>{label}</span>
             </button>
           ))}
         </div>
       </div>
 
-      {/* Pen Settings */}
-      {(currentTool === 'pen' || currentTool === 'eraser') && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#666' }}>도구 설정</div>
-          
-          {currentTool === 'pen' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <label style={{ fontSize: '11px', width: '30px' }}>색상:</label>
-              <input
-                type="color"
-                value={penColor}
-                onChange={(e) => onPenColorChange(e.target.value)}
-                style={{ width: '32px', height: '24px', border: 'none', borderRadius: '3px' }}
-              />
-            </div>
-          )}
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <label style={{ fontSize: '11px', width: '30px' }}>크기:</label>
-            <input
-              type="range"
-              min="1"
-              max="20"
-              value={penSize}
-              onChange={(e) => onPenSizeChange(Number(e.target.value))}
-              style={{ flex: 1 }}
-            />
-            <span style={{ fontSize: '11px', width: '24px', textAlign: 'center' }}>{penSize}</span>
+      {/* 명령 */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div style={{ fontSize: '15px', fontWeight: 700, color: '#555', marginBottom: '2px' }}>명령</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-start' }}>
+            {commandToolsRow1.map(({ command, label, icon }) => (
+              <button
+                key={command}
+                onClick={() => onCommand(command)}
+                style={{
+                  padding: '12px 0 8px 0',
+                  border: '1.5px solid #ccc',
+                  borderRadius: '10px',
+                  backgroundColor: 'white',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '14px',
+                  minWidth: '62px',
+                  minHeight: '62px',
+                  boxSizing: 'border-box',
+                  fontWeight: 600
+                }}
+                title={label}
+              >
+                <span style={{ fontSize: '22px' }}>{icon}</span>
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-start' }}>
+            {commandToolsRow2.map(({ command, label, icon }) => (
+              <button
+                key={command}
+                onClick={() => onCommand(command)}
+                style={{
+                  padding: '12px 0 8px 0',
+                  border: '1.5px solid #ccc',
+                  borderRadius: '10px',
+                  backgroundColor: 'white',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '14px',
+                  minWidth: '62px',
+                  minHeight: '62px',
+                  boxSizing: 'border-box',
+                  fontWeight: 600
+                }}
+                title={label}
+              >
+                <span style={{ fontSize: '22px' }}>{icon}</span>
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-start' }}>
+            {commandToolsRow3.map(({ command, label, icon }) => (
+              <button
+                key={command}
+                onClick={() => onCommand(command)}
+                style={{
+                  padding: '12px 0 8px 0',
+                  border: '1.5px solid #ccc',
+                  borderRadius: '10px',
+                  backgroundColor: 'white',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '14px',
+                  minWidth: '62px',
+                  minHeight: '62px',
+                  boxSizing: 'border-box',
+                  fontWeight: 600
+                }}
+                title={label}
+              >
+                <span style={{ fontSize: '22px' }}>{icon}</span>
+                <span>{label}</span>
+              </button>
+            ))}
           </div>
         </div>
-      )}
-
-      {/* History/Command Tools */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#666' }}>명령</div>
-        <div style={{ display: 'flex', gap: '5px' }}>
-          {commandTools.map(({ command, label, icon }) => (
-            <button
-              key={command}
-              onClick={() => onCommand(command)}
-              style={{
-                padding: '6px 8px',
-                border: '1px solid #ccc',
-                borderRadius: '4px',
-                backgroundColor: 'white',
-                cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '2px',
-                fontSize: '10px',
-                minWidth: '60px',
-                flex: 1
-              }}
-              title={label}
-            >
-              <span style={{ fontSize: '14px' }}>{icon}</span>
-              <span>{label}</span>
-            </button>
-          ))}
-        </div>
       </div>
 
-      {/* Settings Tools */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#666' }}>기타</div>
-        <div style={{ display: 'flex', gap: '5px' }}>
-          {/* Grid Tool with Dropdown */}
-          <div style={{ position: 'relative', flex: 1 }}>
+      {/* 기타 */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ fontSize: '15px', fontWeight: 700, color: '#555', marginBottom: '2px' }}>기타</div>
+        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-start' }}>
+          {/* 그리드 버튼 */}
+          <div style={{ position: 'relative', flex: 1, minWidth: '90px' }}>
             <button
               onClick={() => setShowGridDropdown(!showGridDropdown)}
               style={{
-                padding: '6px 8px',
-                border: '1px solid #ccc',
-                borderRadius: '4px',
+                padding: '12px 0 8px 0',
+                border: '1.5px solid #ccc',
+                borderRadius: '10px',
                 backgroundColor: 'white',
                 cursor: 'pointer',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: '2px',
-                fontSize: '10px',
-                minWidth: '60px',
-                width: '100%'
+                gap: '6px',
+                fontSize: '14px',
+                minWidth: '62px',
+                minHeight: '62px',
+                width: '100%',
+                boxSizing: 'border-box',
+                fontWeight: 600
               }}
               title={`그리드 (현재: ${gridSize}px)`}
             >
-              <span style={{ fontSize: '14px' }}>⚏</span>
+              <span style={{ fontSize: '22px' }}>⚏</span>
               <span>그리드</span>
-              <span style={{ fontSize: '8px' }}>{gridSize}px</span>
+              <span style={{ fontSize: '11px', color: '#888' }}>{gridSize}px</span>
             </button>
-            
             {showGridDropdown && (
               <div style={{
                 position: 'absolute',
@@ -193,8 +222,8 @@ const Toolbar: React.FC<ToolbarProps> = ({
                 left: 0,
                 right: 0,
                 backgroundColor: 'white',
-                border: '1px solid #ccc',
-                borderRadius: '4px',
+                border: '1.5px solid #ccc',
+                borderRadius: '10px',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                 zIndex: 1001,
                 marginTop: '2px'
@@ -208,12 +237,12 @@ const Toolbar: React.FC<ToolbarProps> = ({
                     }}
                     style={{
                       width: '100%',
-                      padding: '8px',
+                      padding: '12px',
                       border: 'none',
                       backgroundColor: gridSize === size ? '#f0f8ff' : 'white',
                       color: gridSize === size ? '#0066ff' : '#333',
                       cursor: 'pointer',
-                      fontSize: '11px',
+                      fontSize: '14px',
                       textAlign: 'left',
                       borderBottom: '1px solid #eee'
                     }}
@@ -224,27 +253,28 @@ const Toolbar: React.FC<ToolbarProps> = ({
               </div>
             )}
           </div>
-          
-          {/* Settings Button */}
+          {/* 설정 버튼 */}
           <button
             onClick={() => onCommand('settings')}
             style={{
-              padding: '6px 8px',
-              border: '1px solid #ccc',
-              borderRadius: '4px',
+              padding: '12px 0 8px 0',
+              border: '1.5px solid #ccc',
+              borderRadius: '10px',
               backgroundColor: 'white',
               cursor: 'pointer',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              gap: '2px',
-              fontSize: '10px',
-              minWidth: '60px',
-              flex: 1
+              gap: '6px',
+              fontSize: '14px',
+              minWidth: '62px',
+              minHeight: '62px',
+              boxSizing: 'border-box',
+              fontWeight: 600
             }}
             title="설정"
           >
-            <span style={{ fontSize: '14px' }}>⚙️</span>
+            <span style={{ fontSize: '22px' }}>⚙️</span>
             <span>설정</span>
           </button>
         </div>

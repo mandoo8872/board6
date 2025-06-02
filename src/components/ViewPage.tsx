@@ -62,39 +62,6 @@ const ViewPage: React.FC = () => {
     silent: true
   })
 
-  // Firebase 실시간 구독 설정
-  useEffect(() => {
-    let unsubscribe: (() => void) | null = null
-
-    if (isFirebaseAvailable()) {
-      console.log('🔄 Firebase 실시간 구독 시작')
-      
-      unsubscribe = subscribeToBoardChanges((boardState) => {
-        // Firebase에서 받은 데이터로 상태 업데이트
-        console.log('📱 ViewPage: Firebase에서 새 데이터 수신', {
-          shapes: boardState.shapes?.length || 0,
-          strokes: boardState.strokes?.length || 0,
-          timestamp: new Date(boardState.lastUpdated || boardState.timestamp).toLocaleTimeString()
-        })
-        
-        // 상태 복원
-        storageActions.restoreBoardState(boardState)
-      })
-    } else {
-      console.warn('⚠️ Firebase 사용 불가. localStorage 기반으로 동작합니다.')
-      // Firebase 사용 불가 시 localStorage에서 한 번 불러오기
-      storageActions.pullFromStorage()
-    }
-
-    // 컴포넌트 언마운트 시 구독 해제
-    return () => {
-      if (unsubscribe) {
-        console.log('🛑 Firebase 구독 해제')
-        unsubscribe()
-      }
-    }
-  }, []) // 빈 의존성 배열로 마운트 시 한 번만 실행
-
   // 툴바 상태를 localStorage에 저장
   useEffect(() => {
     localStorage.setItem('viewpage-toolbar-state', JSON.stringify(toolbarState))
@@ -203,6 +170,20 @@ const ViewPage: React.FC = () => {
     }
   }, [shapes, strokes, storageActions])
 
+  useEffect(() => {
+    if (isFirebaseAvailable()) {
+      const unsubscribe = subscribeToBoardChanges((boardState) => {
+        console.log('[ViewPage] 실시간 데이터 수신:', boardState)
+        setShapes(boardState.shapes || [])
+        setStrokes(boardState.strokes || [])
+        setSelectedId(boardState.selectedId || null)
+      })
+      return () => {
+        if (unsubscribe) unsubscribe()
+      }
+    }
+  }, [])
+
   const handleToolChange = useCallback((newTool: DrawingTool) => {
     // ViewPage에서는 pen, eraser, select 허용
     if (newTool === 'pen' || newTool === 'eraser' || newTool === 'select') {
@@ -211,21 +192,39 @@ const ViewPage: React.FC = () => {
   }, [])
 
   return (
-    <div style={{ width: '100vw', height: '100vh', position: 'relative', backgroundColor: '#f5f5f5' }}>
+    <div style={{ 
+      width: '100vw', 
+      height: '100vh', 
+      position: 'relative', 
+      backgroundColor: '#f5f5f5',
+      margin: 0,
+      padding: 0,
+      overflow: 'hidden'
+    }}>
       {/* 캔버스 영역 */}
-      <CanvasWrapper
-        tool={tool}
-        shapes={shapes}
-        strokes={strokes}
-        penColor={penColor}
-        penSize={penSize}
-        gridSize={gridSize}
-        selectedId={selectedId}
-        setShapes={setShapes}
-        setStrokes={setStrokes}
-        setSelectedId={setSelectedId}
-        onToolChange={handleToolChange}
-      />
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100%',
+        height: '100%'
+      }}>
+        <CanvasWrapper
+          tool={tool}
+          shapes={shapes}
+          strokes={strokes}
+          penColor={penColor}
+          penSize={penSize}
+          gridSize={gridSize}
+          selectedId={selectedId}
+          setShapes={setShapes}
+          setStrokes={setStrokes}
+          setSelectedId={setSelectedId}
+          onToolChange={handleToolChange}
+        />
+      </div>
 
       {/* 플로팅 툴바 */}
       <div

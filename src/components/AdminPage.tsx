@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import { DrawingTool, CommandTool, Shape, Stroke } from '../types'
 import { DEFAULT_PEN_COLOR, DEFAULT_PEN_SIZE, DEFAULT_GRID_SIZE } from '../utils/constants'
 import CanvasWrapper from './CanvasWrapper'
@@ -104,8 +104,22 @@ const AdminPage: React.FC = () => {
       case 'redo':
         undoRedoActions.redo()
         break
+      case 'settings':
+        // 설정 대화상자에서 펜 색상과 크기를 변경할 수 있도록 함
+        const newColor = prompt('펜 색상을 입력하세요 (예: #FF0000):', penColor)
+        if (newColor) {
+          setPenColor(newColor)
+        }
+        const newSize = prompt('펜 크기를 입력하세요 (1-20):', penSize.toString())
+        if (newSize) {
+          const size = parseInt(newSize)
+          if (!isNaN(size) && size >= 1 && size <= 20) {
+            setPenSize(size)
+          }
+        }
+        break
     }
-  }, [shapeActions, undoRedoActions, storageActions, shapes])
+  }, [shapeActions, undoRedoActions, storageActions, shapes, penColor, penSize])
 
   const handleUpdateShape = useCallback((property: keyof Shape, value: any) => {
     if (!selectedId) return
@@ -141,6 +155,12 @@ const AdminPage: React.FC = () => {
     }, 0)
   }, [selectedId, shapeActions, undoRedoActions])
 
+  useEffect(() => {
+    console.log('[AdminPage] 상태 변경: shapes, strokes, selectedId', { shapes, strokes, selectedId })
+    storageActions.pushToFirebase()
+    console.log('[AdminPage] pushToFirebase 호출')
+  }, [shapes, strokes, selectedId])
+
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
       {/* 관리자 표시 */}
@@ -163,10 +183,6 @@ const AdminPage: React.FC = () => {
         currentTool={tool}
         onToolChange={handleToolChange}
         onCommand={handleCommand}
-        penColor={penColor}
-        penSize={penSize}
-        onPenColorChange={setPenColor}
-        onPenSizeChange={setPenSize}
         gridSize={gridSize}
         onGridSizeChange={handleGridSizeChange}
       />

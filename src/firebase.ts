@@ -1,6 +1,6 @@
 // Firebase 초기화 및 DB 참조
 import { initializeApp } from 'firebase/app'
-import { getDatabase, ref, onValue, set, off, Database, DatabaseReference, DataSnapshot } from 'firebase/database'
+import { getDatabase, ref, onValue, set, off, DatabaseReference, DataSnapshot } from 'firebase/database'
 
 const firebaseConfig = {
   apiKey: "AIzaSyBF1sBC8tegqpQzlhZDkfRyCkG1N-RqHZM",
@@ -16,6 +16,11 @@ const app = initializeApp(firebaseConfig)
 const db = getDatabase(app)
 
 export { db }
+
+// Firebase 사용 가능 여부 확인
+export const isFirebaseAvailable = (): boolean => {
+  return !!db
+}
 
 // 보드 데이터 참조 가져오기
 export const getBoardRef = (boardId: string = 'mainBoard'): DatabaseReference => {
