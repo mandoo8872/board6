@@ -186,6 +186,34 @@
   * 모든 캔버스 기능은 HTML5 Canvas API 기반으로 직접 구현함
   * 목적은 의존도 없이 순수한 커스텀 렌더링 구조 확보
 
+---
+
+## 🔥 7. 보드 연동 및 실시간 동기화 정책 (2025.05 최신)
+
+### 7.1 연동 구조 개요
+- **관리자(AdminPage)**: 보드 상태를 직접 편집하고, "현장으로 전송(Push)" 시 Firebase Realtime Database에 전체 상태를 저장합니다.
+- **현장(ViewPage)**: Firebase의 보드 상태를 실시간 구독(subscribe)하여, 관리자가 push한 최신 상태를 즉시 반영합니다.
+- **localStorage**: Firebase 연결 실패/오프라인 시 fallback 용도로 사용되며, push/pull 및 자동 저장/복원에 활용됩니다.
+
+### 7.2 주요 연동 흐름
+- **Push (Admin → View)**: AdminPage에서 pushToFirebase() 호출 → Firebase에 전체 상태 저장 → ViewPage에서 subscribeToBoardChanges()로 실시간 반영
+- **Pull (View → Admin)**: 필요 시 ViewPage의 상태를 pullFromStorage()로 불러와 AdminPage에서 복원 가능(주로 백업/오프라인용)
+- **저장/불러오기**: useBoardStorage 훅을 통해 JSON 파일로 내보내기/불러오기, localStorage 임시 저장 지원
+
+### 7.3 환경변수 및 예외 처리
+- .env 및 Vercel 환경변수에 Firebase 설정 필요(없으면 localStorage만 동작)
+- Firebase 연결 실패 시 자동으로 localStorage fallback
+- 실시간 동기화가 안 될 경우, 콘솔/네트워크 로그 및 환경변수, Firebase 규칙, 배포 상태 점검
+
+### 7.4 실제 코드 흐름 예시
+- AdminPage: useBoardStorage의 pushToFirebase(), pushToStorage(), saveToFile() 등 사용
+- ViewPage: subscribeToBoardChanges()로 실시간 구독, isFirebaseAvailable()로 환경 체크 후 localStorage fallback
+
+### 7.5 데이터 구조
+- Firebase boards/mainBoard에 전체 상태(JSON) 저장: shapes, strokes, selectedId, timestamp 등 포함
+
+---
+
 ## ✅ 정리
 
 Board 6는 복잡해진 구조를 다시 통합하고, 각 도구/레이어/상태를 명확히 분리하여 안정성을 확보하는 것을 목표로 합니다. 다음 단계로는 컴포넌트 분리와 도구별 전용 처리 모듈 도입이 권장됩니다.

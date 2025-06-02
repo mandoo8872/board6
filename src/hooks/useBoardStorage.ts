@@ -32,16 +32,19 @@ export const useBoardStorage = ({
 }: BoardStorageProps) => {
   // 현재 보드 상태 가져오기
   const getCurrentBoardState = useCallback((): BoardState => {
-    return {
+    const state = {
       shapes,
       strokes,
       selectedId,
       timestamp: Date.now()
     }
+    console.log('[useBoardStorage] getCurrentBoardState', state)
+    return state
   }, [shapes, strokes, selectedId])
 
   // 보드 상태 복원
   const restoreBoardState = useCallback((boardState: BoardState) => {
+    console.log('[useBoardStorage] restoreBoardState', boardState)
     setShapes(boardState.shapes || [])
     setStrokes(boardState.strokes || [])
     setSelectedId(boardState.selectedId || null)
@@ -51,25 +54,28 @@ export const useBoardStorage = ({
   }, [setShapes, setStrokes, setSelectedId, onClearHistory])
 
   // localStorage에 저장
-  const saveToLocalStorage = useCallback((boardState: BoardState, key: string = 'board-state') => {
+  const saveToLocalStorage = useCallback((boardState: BoardState, key: string = 'board-push-state') => {
     try {
       localStorage.setItem(key, JSON.stringify(boardState))
+      console.log('[useBoardStorage] localStorage 저장 성공', key, boardState)
       return true
     } catch (error) {
-      console.error('localStorage 저장 실패:', error)
+      console.error('[useBoardStorage] localStorage 저장 실패:', error)
       return false
     }
   }, [])
 
   // localStorage에서 불러오기
-  const loadFromLocalStorage = useCallback((key: string = 'board-state'): BoardState | null => {
+  const loadFromLocalStorage = useCallback((key: string = 'board-push-state'): BoardState | null => {
     try {
       const saved = localStorage.getItem(key)
       if (saved) {
-        return JSON.parse(saved)
+        const parsed = JSON.parse(saved)
+        console.log('[useBoardStorage] localStorage 불러오기 성공', key, parsed)
+        return parsed
       }
     } catch (error) {
-      console.error('localStorage 불러오기 실패:', error)
+      console.error('[useBoardStorage] localStorage 불러오기 실패:', error)
     }
     return null
   }, [])
@@ -120,19 +126,21 @@ export const useBoardStorage = ({
   // Firebase에 현재 상태 저장 (관리자 → Firebase)
   const pushToFirebase = useCallback(async () => {
     const boardState = getCurrentBoardState()
+    console.log('[useBoardStorage] pushToFirebase 호출', boardState)
     const success = await saveBoardToFirebase(boardState)
     
     if (success) {
       if (!silent) {
         alert('✅ 현장으로 전송되었습니다.')
       }
-      console.log('Firebase 푸시 성공')
+      console.log('[useBoardStorage] Firebase 푸시 성공')
     } else {
       // Firebase 실패 시 localStorage 백업
       saveToLocalStorage(boardState, 'board-push-state')
       if (!silent) {
         alert('⚠️ Firebase 연결 실패. 로컬에 임시 저장되었습니다.')
       }
+      console.warn('[useBoardStorage] Firebase 실패, localStorage에 백업')
     }
   }, [getCurrentBoardState, silent, saveToLocalStorage])
 
@@ -143,6 +151,7 @@ export const useBoardStorage = ({
     if (!silent) {
       alert('관리자 상태가 저장되었습니다.')
     }
+    console.log('[useBoardStorage] pushToStorage 호출', boardState)
   }, [getCurrentBoardState, saveToLocalStorage, silent])
 
   const pullFromStorage = useCallback(() => {
@@ -152,10 +161,12 @@ export const useBoardStorage = ({
       if (!silent) {
         alert('관리자 상태를 불러왔습니다.')
       }
+      console.log('[useBoardStorage] pullFromStorage 성공', boardState)
     } else {
       if (!silent) {
         alert('저장된 관리자 상태가 없습니다.')
       }
+      console.warn('[useBoardStorage] pullFromStorage: 저장된 상태 없음')
     }
   }, [loadFromLocalStorage, restoreBoardState, silent])
 

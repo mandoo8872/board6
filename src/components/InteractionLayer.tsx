@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useCallback } from 'react'
 import { DrawingTool, Point, Shape } from '../types'
 import { CANVAS_WIDTH, CANVAS_HEIGHT, AUTO_TOOL_RETURN_DELAY, RESIZE_HANDLE_SIZE } from '../utils/constants'
 import { hitTest, snapPointToGrid } from '../utils/canvasHelpers'
+import { throttle } from '../utils/debounceThrottle'
 
 interface InteractionLayerProps {
   tool: DrawingTool
@@ -22,6 +23,8 @@ interface InteractionLayerProps {
   onDuplicateSelectedShape?: () => void
   onMoveShape?: (shapeId: string, newPosition: Point) => void
   onResizeShape?: (shapeId: string, newSize: { width: number; height: number; x?: number; y?: number }) => void
+  onSyncShapes?: (shapes: Shape[]) => void
+  onEditEnd?: (shapes: Shape[]) => void
 }
 
 // resize handle 위치 타입
@@ -46,7 +49,9 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
   onDeleteSelectedShape,
   onDuplicateSelectedShape,
   onMoveShape,
-  onResizeShape
+  onResizeShape,
+  onSyncShapes,
+  onEditEnd
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const isDrawingRef = useRef(false)
@@ -59,6 +64,7 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
   const resizeStartPointRef = useRef<Point | null>(null)
   const originalSizeRef = useRef<{ width: number; height: number } | null>(null)
   const resizeHandlePositionRef = useRef<ResizeHandlePosition | null>(null)
+  const throttledSync = useRef(onSyncShapes ? throttle(onSyncShapes, 300) : undefined).current
 
   // 자동 도구 복귀 타이머 설정
   const resetAutoReturnTimer = useCallback(() => {
@@ -284,6 +290,7 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
             x: snappedX,
             y: snappedY
           })
+          if (throttledSync) throttledSync(shapes)
         }
         else if (isDraggingRef.current && selectedShapeRef.current && dragStartPointRef.current && onMoveShape) {
           const dx = point.x - dragStartPointRef.current.x
@@ -302,12 +309,13 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
             x: newPosition.x,
             y: newPosition.y
           }
+          if (throttledSync) throttledSync(shapes)
         }
         break
     }
 
     e.preventDefault()
-  }, [tool, currentStrokeId, onAddPointToStroke, onEraseAtPoint, getCanvasPoint, resetAutoReturnTimer, onMoveShape, onResizeShape, gridSize])
+  }, [tool, currentStrokeId, onAddPointToStroke, onEraseAtPoint, getCanvasPoint, resetAutoReturnTimer, onMoveShape, onResizeShape, gridSize, shapes, throttledSync])
 
   // 포인터 업 이벤트
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
@@ -334,6 +342,7 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
           resizeStartPointRef.current = null
           originalSizeRef.current = null
           resizeHandlePositionRef.current = null
+          if (onEditEnd) onEditEnd(shapes)
         }
         else if (isDraggingRef.current && selectedShapeRef.current && onMoveShape) {
           const finalPosition = snapPointToGrid({
@@ -345,12 +354,13 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
           isDraggingRef.current = false
           dragStartPointRef.current = null
           selectedShapeRef.current = null
+          if (onEditEnd) onEditEnd(shapes)
         }
         break
     }
 
     e.preventDefault()
-  }, [tool, onFinishStroke, resetAutoReturnTimer, onMoveShape, gridSize])
+  }, [tool, onFinishStroke, resetAutoReturnTimer, onMoveShape, gridSize, shapes, onEditEnd])
 
   // 키보드 이벤트 처리
   useEffect(() => {

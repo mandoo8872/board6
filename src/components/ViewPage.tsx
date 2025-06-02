@@ -155,6 +155,7 @@ const ViewPage: React.FC = () => {
   // 자동으로 현장 데이터 불러오기 (Firebase 없을 때만)
   React.useEffect(() => {
     if (!isFirebaseAvailable()) {
+      console.log('[ViewPage] Firebase 미사용, localStorage에서 복원 시도')
       storageActions.pullFromStorage()
     }
   }, [storageActions])
@@ -163,6 +164,7 @@ const ViewPage: React.FC = () => {
   React.useEffect(() => {
     if (!isFirebaseAvailable()) {
       const timeoutId = setTimeout(() => {
+        console.log('[ViewPage] localStorage 자동 저장 실행')
         storageActions.pushToStorage()
       }, 1000) // 1초 후 자동 저장
 
@@ -172,6 +174,7 @@ const ViewPage: React.FC = () => {
 
   useEffect(() => {
     if (isFirebaseAvailable()) {
+      console.log('[ViewPage] Firebase 실시간 구독 시작')
       const unsubscribe = subscribeToBoardChanges((boardState) => {
         console.log('[ViewPage] 실시간 데이터 수신:', boardState)
         setShapes(boardState.shapes || [])

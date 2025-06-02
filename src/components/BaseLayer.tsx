@@ -2,21 +2,25 @@ import React, { useRef, useEffect, useCallback } from 'react'
 import { Shape } from '../types'
 import { CANVAS_WIDTH, CANVAS_HEIGHT, RESIZE_HANDLE_SIZE, RESIZE_HANDLE_COLOR } from '../utils/constants'
 import { clearCanvas, drawGrid, drawAllShapes } from '../utils/canvasHelpers'
+import { throttle } from '../utils/debounceThrottle'
 
 interface BaseLayerProps {
   shapes: Shape[]
   selectedId: string | null
   gridSize: number
   showGrid: boolean
+  onSyncShapes?: (shapes: Shape[]) => void
 }
 
 const BaseLayer: React.FC<BaseLayerProps> = ({ 
   shapes, 
   selectedId, 
   gridSize, 
-  showGrid 
+  showGrid,
+  onSyncShapes
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const throttledSync = useRef(onSyncShapes ? throttle(onSyncShapes, 300) : undefined).current
 
   // resize handle 그리기
   const drawResizeHandle = useCallback((ctx: CanvasRenderingContext2D, x: number, y: number) => {
@@ -87,7 +91,10 @@ const BaseLayer: React.FC<BaseLayerProps> = ({
         drawResizeHandle(ctx, x + width, y + height) // bottom-right
       }
     }
-  }, [shapes, selectedId, gridSize, showGrid, drawResizeHandle])
+
+    // 실시간 동기화
+    if (throttledSync) throttledSync(shapes)
+  }, [shapes, selectedId, gridSize, showGrid, drawResizeHandle, throttledSync])
 
   return (
     <canvas

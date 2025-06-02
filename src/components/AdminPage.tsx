@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useState, useCallback } from 'react'
 import { DrawingTool, CommandTool, Shape, Stroke } from '../types'
 import { DEFAULT_PEN_COLOR, DEFAULT_PEN_SIZE, DEFAULT_GRID_SIZE } from '../utils/constants'
 import CanvasWrapper from './CanvasWrapper'
@@ -7,6 +7,7 @@ import PropertiesPanel from './PropertiesPanel'
 import { useShapes } from '../hooks/useShapes'
 import { useUndoRedo } from '../hooks/useUndoRedo'
 import { useBoardStorage } from '../hooks/useBoardStorage'
+import { debounce } from '../utils/debounceThrottle'
 
 const AdminPage: React.FC = () => {
   const [tool, setTool] = useState<DrawingTool>('select')
@@ -47,6 +48,11 @@ const AdminPage: React.FC = () => {
     setSelectedId,
     gridSize
   })
+
+  // debounce(300ms)로 속성 변경 저장
+  const debouncedSaveShapeProps = React.useRef(debounce(() => {
+    storageActions.pushToFirebase()
+  }, 300)).current
 
   const handleToolChange = useCallback((newTool: DrawingTool) => {
     setTool(newTool)
@@ -123,20 +129,17 @@ const AdminPage: React.FC = () => {
 
   const handleUpdateShape = useCallback((property: keyof Shape, value: any) => {
     if (!selectedId) return
-    
     const beforeShape = shapes.find(s => s.id === selectedId)
     if (!beforeShape) return
-    
     shapeActions.updateShapeProperty(selectedId, property, value)
-    
-    // Undo 기록을 위해 다음 프레임에서 처리
+    debouncedSaveShapeProps() // 속성 변경 시 debounce로 저장
     setTimeout(() => {
       const afterShape = shapes.find(s => s.id === selectedId)
       if (afterShape) {
         undoRedoActions.recordUpdateShape(selectedId, beforeShape, afterShape)
       }
     }, 0)
-  }, [selectedId, shapeActions, shapes, undoRedoActions])
+  }, [selectedId, shapeActions, shapes, undoRedoActions, debouncedSaveShapeProps])
 
   const handleDeleteShape = useCallback(() => {
     if (!selectedId) return
@@ -154,12 +157,6 @@ const AdminPage: React.FC = () => {
       undoRedoActions.recordBatchAction(beforeState, afterState)
     }, 0)
   }, [selectedId, shapeActions, undoRedoActions])
-
-  useEffect(() => {
-    console.log('[AdminPage] 상태 변경: shapes, strokes, selectedId', { shapes, strokes, selectedId })
-    storageActions.pushToFirebase()
-    console.log('[AdminPage] pushToFirebase 호출')
-  }, [shapes, strokes, selectedId])
 
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
@@ -185,6 +182,10 @@ const AdminPage: React.FC = () => {
         onCommand={handleCommand}
         gridSize={gridSize}
         onGridSizeChange={handleGridSizeChange}
+        penColor={penColor}
+        onPenColorChange={setPenColor}
+        penSize={penSize}
+        onPenSizeChange={setPenSize}
       />
 
       <PropertiesPanel

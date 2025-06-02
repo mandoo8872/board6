@@ -2,14 +2,17 @@ import React, { useRef, useEffect } from 'react'
 import { Stroke } from '../types'
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from '../utils/constants'
 import { clearCanvas, drawAllStrokes } from '../utils/canvasHelpers'
+import { debounce } from '../utils/debounceThrottle'
 
 interface DrawLayerProps {
   strokes: Stroke[]
   currentStroke: Stroke | null
+  onSyncStrokes?: (strokes: Stroke[]) => void
 }
 
-const DrawLayer: React.FC<DrawLayerProps> = ({ strokes, currentStroke }) => {
+const DrawLayer: React.FC<DrawLayerProps> = ({ strokes, currentStroke, onSyncStrokes }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const debouncedSync = useRef(onSyncStrokes ? debounce(onSyncStrokes, 200) : undefined).current
 
   // 스트로크 렌더링
   useEffect(() => {
@@ -29,7 +32,10 @@ const DrawLayer: React.FC<DrawLayerProps> = ({ strokes, currentStroke }) => {
     if (currentStroke) {
       drawAllStrokes(ctx, [currentStroke])
     }
-  }, [strokes, currentStroke])
+
+    // ViewPage에서만 실시간 동기화
+    if (debouncedSync) debouncedSync(strokes)
+  }, [strokes, currentStroke, debouncedSync])
 
   return (
     <canvas

@@ -7,6 +7,10 @@ interface ToolbarProps {
   onCommand: (command: CommandTool) => void
   gridSize?: number
   onGridSizeChange?: (size: number) => void
+  penColor?: string
+  onPenColorChange?: (color: string) => void
+  penSize?: number
+  onPenSizeChange?: (size: number) => void
 }
 
 const Toolbar: React.FC<ToolbarProps> = ({
@@ -14,7 +18,11 @@ const Toolbar: React.FC<ToolbarProps> = ({
   onToolChange,
   onCommand,
   gridSize,
-  onGridSizeChange
+  onGridSizeChange,
+  penColor,
+  onPenColorChange,
+  penSize,
+  onPenSizeChange
 }) => {
   const [showGridDropdown, setShowGridDropdown] = useState(false)
   
@@ -90,6 +98,44 @@ const Toolbar: React.FC<ToolbarProps> = ({
               <span>{label}</span>
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* 펜 설정 */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ fontSize: '15px', fontWeight: 700, color: '#555', marginBottom: '2px' }}>펜 설정</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {/* 색상 설정 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <label style={{ fontSize: '14px', fontWeight: 600, color: '#555', minWidth: '40px' }}>색상:</label>
+            <input
+              type="color"
+              value={penColor}
+              onChange={(e) => onPenColorChange?.(e.target.value)}
+              style={{ 
+                width: '40px', 
+                height: '40px', 
+                border: '1px solid #ccc',
+                borderRadius: '8px',
+                padding: '2px'
+              }}
+            />
+          </div>
+          {/* 크기 설정 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <label style={{ fontSize: '14px', fontWeight: 600, color: '#555', minWidth: '40px' }}>크기:</label>
+            <input
+              type="range"
+              min="1"
+              max="20"
+              value={penSize}
+              onChange={(e) => onPenSizeChange?.(Number(e.target.value))}
+              style={{ flex: 1 }}
+            />
+            <span style={{ fontSize: '14px', fontWeight: 600, color: '#555', minWidth: '24px', textAlign: 'right' }}>
+              {penSize}
+            </span>
+          </div>
         </div>
       </div>
 
