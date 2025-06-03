@@ -14,6 +14,8 @@ export interface Stroke {
   size: number
   points: Point[]
   isErasable?: boolean
+  updatedAt?: number
+  updatedBy?: string
 }
 
 export interface Shape {
@@ -36,6 +38,8 @@ export interface Shape {
     isResizable?: boolean
     isErasable?: boolean
   }
+  updatedAt?: number
+  updatedBy?: string
 }
 
 // 보드 상태 타입

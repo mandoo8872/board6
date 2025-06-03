@@ -3,7 +3,8 @@ import { DrawingTool, Shape, Stroke } from '../types'
 import { DEFAULT_PEN_COLOR, DEFAULT_PEN_SIZE, DEFAULT_GRID_SIZE } from '../utils/constants'
 import CanvasWrapper from './CanvasWrapper'
 import { useBoardStorage } from '../hooks/useBoardStorage'
-import { subscribeToBoardChanges, isFirebaseAvailable } from '../firebase'
+import { isFirebaseAvailable, subscribeToSharedBoard, saveStrokesToFirebase, updateBoardData } from '../firebase'
+import { createSyncCallbacks } from '../utils/syncUtils'
 
 interface ToolbarState {
   x: number
@@ -11,6 +12,21 @@ interface ToolbarState {
   width: number
   height: number
   opacity: number
+}
+
+// LWW 병합 함수 (CanvasWrapper에서 복사)
+function mergeLWW<T extends { id: string; updatedAt?: number }>(localArr: T[], remoteArr: T[]): T[] {
+  const map = new Map<string, T>()
+  for (const item of localArr) {
+    map.set(item.id, item)
+  }
+  for (const remote of remoteArr) {
+    const local = map.get(remote.id)
+    if (!local || (remote.updatedAt && (!local.updatedAt || remote.updatedAt > local.updatedAt))) {
+      map.set(remote.id, remote)
+    }
+  }
+  return Array.from(map.values())
 }
 
 const ViewPage: React.FC = () => {
@@ -172,19 +188,16 @@ const ViewPage: React.FC = () => {
     }
   }, [shapes, strokes, storageActions])
 
+  // Firebase 실시간 구독 (ViewPage에서만)
   useEffect(() => {
-    if (isFirebaseAvailable()) {
-      console.log('[ViewPage] Firebase 실시간 구독 시작')
-      const unsubscribe = subscribeToBoardChanges((boardState) => {
-        console.log('[ViewPage] 실시간 데이터 수신:', boardState)
-        setShapes(boardState.shapes || [])
-        setStrokes(boardState.strokes || [])
-        setSelectedId(boardState.selectedId || null)
-      })
-      return () => {
-        if (unsubscribe) unsubscribe()
-      }
-    }
+    if (!isFirebaseAvailable()) return
+    const unsubscribe = subscribeToSharedBoard((data) => {
+      if (data.shapes) setShapes(prev => mergeLWW(prev, Object.values(data.shapes)))
+      if (data.strokes) setStrokes(prev => mergeLWW(prev, Object.values(data.strokes)))
+    }, (err) => {
+      console.warn('[ViewPage] Firebase 실시간 구독 오류', err)
+    })
+    return () => unsubscribe()
   }, [])
 
   const handleToolChange = useCallback((newTool: DrawingTool) => {
@@ -193,6 +206,68 @@ const ViewPage: React.FC = () => {
       setTool(newTool)
     }
   }, [])
+
+  // 실시간 write 콜백 구현
+  const syncCallbacks = React.useMemo(() => createSyncCallbacks({
+    onDrawEnd: () => {
+      if (isFirebaseAvailable()) {
+        saveStrokesToFirebase(strokes)
+      }
+    },
+    onMoveShape: (shapeId: string, newPosition: { x: number; y: number }) => {
+      if (isFirebaseAvailable()) {
+        const userId = 'viewer'
+        updateBoardData({
+          [`shapes/${shapeId}/x`]: newPosition.x,
+          [`shapes/${shapeId}/y`]: newPosition.y,
+          [`shapes/${shapeId}/updatedAt`]: Date.now(),
+          [`shapes/${shapeId}/updatedBy`]: userId
+        })
+      }
+    },
+    onResizeShape: (shapeId: string, newSize: { width: number; height: number; x?: number; y?: number }) => {
+      if (isFirebaseAvailable()) {
+        const userId = 'viewer'
+        updateBoardData({
+          [`shapes/${shapeId}/width`]: newSize.width,
+          [`shapes/${shapeId}/height`]: newSize.height,
+          ...(newSize.x !== undefined ? { [`shapes/${shapeId}/x`]: newSize.x } : {}),
+          ...(newSize.y !== undefined ? { [`shapes/${shapeId}/y`]: newSize.y } : {}),
+          [`shapes/${shapeId}/updatedAt`]: Date.now(),
+          [`shapes/${shapeId}/updatedBy`]: userId
+        })
+      }
+    },
+    onUpdateShape: (shapeId: string, property: keyof Shape, value: any) => {
+      if (isFirebaseAvailable()) {
+        if (property === 'selected') return // selected는 동기화하지 않음
+        const userId = 'viewer'
+        updateBoardData({
+          [`shapes/${shapeId}/${property}`]: value,
+          [`shapes/${shapeId}/updatedAt`]: Date.now(),
+          [`shapes/${shapeId}/updatedBy`]: userId
+        })
+      }
+    },
+    onDeleteShape: (shapeId: string) => {
+      if (isFirebaseAvailable()) {
+        const userId = 'viewer'
+        updateBoardData({ [`shapes/${shapeId}`]: { id: shapeId, deleted: true, updatedAt: Date.now(), updatedBy: userId } })
+      }
+    },
+    onCreateShape: (shape: Shape) => {
+      if (isFirebaseAvailable()) {
+        // selected 속성 제거 후 저장
+        const { selected, ...rest } = shape
+        updateBoardData({ [`shapes/${shape.id}`]: rest })
+      }
+    }
+  }, {
+    drawDebounceMs: 200,
+    moveThrottleMs: 300,
+    resizeThrottleMs: 300,
+    updateDebounceMs: 300
+  }), [strokes])
 
   return (
     <div style={{ 
@@ -227,6 +302,10 @@ const ViewPage: React.FC = () => {
           setSelectedId={setSelectedId}
           onToolChange={handleToolChange}
           showGrid={false}
+          userId="viewer"
+          onDrawEnd={syncCallbacks.onDrawEnd}
+          onMoveShape={syncCallbacks.onMoveShape}
+          onResizeShape={syncCallbacks.onResizeShape}
         />
       </div>
 

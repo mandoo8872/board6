@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { Shape, Stroke } from '../types'
-import { saveBoardToFirebase } from '../firebase'
+import { updateBoardData } from '../firebase'
 
 interface BoardStorageProps {
   shapes: Shape[]
@@ -46,7 +46,13 @@ export const useBoardStorage = ({
   const restoreBoardState = useCallback((boardState: BoardState) => {
     console.log('[useBoardStorage] restoreBoardState', boardState)
     setShapes(boardState.shapes || [])
-    setStrokes(boardState.strokes || [])
+    setStrokes(
+      Array.isArray(boardState.strokes)
+        ? boardState.strokes
+        : boardState.strokes
+          ? Object.values(boardState.strokes)
+          : []
+    )
     setSelectedId(boardState.selectedId || null)
     if (onClearHistory) {
       onClearHistory()
@@ -127,15 +133,13 @@ export const useBoardStorage = ({
   const pushToFirebase = useCallback(async () => {
     const boardState = getCurrentBoardState()
     console.log('[useBoardStorage] pushToFirebase 호출', boardState)
-    const success = await saveBoardToFirebase(boardState)
-    
-    if (success) {
+    try {
+      await updateBoardData(boardState)
       if (!silent) {
         alert('✅ 현장으로 전송되었습니다.')
       }
       console.log('[useBoardStorage] Firebase 푸시 성공')
-    } else {
-      // Firebase 실패 시 localStorage 백업
+    } catch (error) {
       saveToLocalStorage(boardState, 'board-push-state')
       if (!silent) {
         alert('⚠️ Firebase 연결 실패. 로컬에 임시 저장되었습니다.')

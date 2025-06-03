@@ -9,27 +9,33 @@ interface UseStrokeProps {
 
 export const useStroke = ({ setStrokes, penColor, penSize }: UseStrokeProps) => {
   // 새 스트로크 시작
-  const startStroke = useCallback((point: Point, tool: DrawingTool) => {
+  const startStroke = useCallback((point: Point, tool: DrawingTool, userId: string) => {
+    const now = Date.now()
     const newStroke: Stroke = {
-      id: Date.now().toString(),
+      id: now.toString(),
       tool,
       points: [point],
       color: penColor,
       size: penSize,
-      isErasable: true
+      isErasable: true,
+      updatedAt: now,
+      updatedBy: userId,
+      userId: userId
     }
-
-    setStrokes(prev => [...prev, newStroke])
+    setStrokes(prev => [...(Array.isArray(prev) ? prev : []), newStroke])
     return newStroke.id
   }, [penColor, penSize, setStrokes])
 
   // 현재 스트로크에 포인트 추가
   const addPointToStroke = useCallback((strokeId: string, point: Point) => {
-    setStrokes(prev => prev.map(stroke => 
-      stroke.id === strokeId 
-        ? { ...stroke, points: [...stroke.points, point] }
-        : stroke
-    ))
+    setStrokes(prev => Array.isArray(prev)
+      ? prev.map(stroke => 
+          stroke && stroke.id === strokeId 
+            ? { ...stroke, points: [...stroke.points, point], updatedAt: Date.now() } 
+            : stroke
+        )
+      : prev
+    )
   }, [setStrokes])
 
   // 지우개로 스트로크 삭제 (포인트 기반)

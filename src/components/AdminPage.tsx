@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import { DrawingTool, CommandTool, Shape, Stroke } from '../types'
 import { DEFAULT_PEN_COLOR, DEFAULT_PEN_SIZE, DEFAULT_GRID_SIZE } from '../utils/constants'
 import CanvasWrapper from './CanvasWrapper'
@@ -7,7 +7,9 @@ import PropertiesPanel from './PropertiesPanel'
 import { useShapes } from '../hooks/useShapes'
 import { useUndoRedo } from '../hooks/useUndoRedo'
 import { useBoardStorage } from '../hooks/useBoardStorage'
-import { debounce } from '../utils/debounceThrottle'
+import { saveStrokesToFirebase, updateBoardData, isFirebaseAvailable, subscribeToSharedBoard } from '../firebase'
+import { createSyncCallbacks } from '../utils/syncUtils'
+import { mergeLWW } from '../utils/syncUtils'
 
 const AdminPage: React.FC = () => {
   const [tool, setTool] = useState<DrawingTool>('select')
@@ -50,10 +52,67 @@ const AdminPage: React.FC = () => {
     gridSize
   })
 
-  // debounce(300ms)로 속성 변경 저장
-  const debouncedSaveShapeProps = React.useRef(debounce(() => {
-    storageActions.pushToFirebase()
-  }, 300)).current
+  // 실시간 write 콜백 구현
+  const syncCallbacks = React.useMemo(() => createSyncCallbacks({
+    onDrawEnd: () => {
+      if (isFirebaseAvailable()) {
+        saveStrokesToFirebase(strokes)
+      }
+    },
+    onMoveShape: (shapeId: string, newPosition: { x: number; y: number }) => {
+      if (isFirebaseAvailable()) {
+        const userId = 'admin'
+        updateBoardData({
+          [`shapes/${shapeId}/x`]: newPosition.x,
+          [`shapes/${shapeId}/y`]: newPosition.y,
+          [`shapes/${shapeId}/updatedAt`]: Date.now(),
+          [`shapes/${shapeId}/updatedBy`]: userId
+        })
+      }
+    },
+    onResizeShape: (shapeId: string, newSize: { width: number; height: number; x?: number; y?: number }) => {
+      if (isFirebaseAvailable()) {
+        const userId = 'admin'
+        updateBoardData({
+          [`shapes/${shapeId}/width`]: newSize.width,
+          [`shapes/${shapeId}/height`]: newSize.height,
+          ...(newSize.x !== undefined ? { [`shapes/${shapeId}/x`]: newSize.x } : {}),
+          ...(newSize.y !== undefined ? { [`shapes/${shapeId}/y`]: newSize.y } : {}),
+          [`shapes/${shapeId}/updatedAt`]: Date.now(),
+          [`shapes/${shapeId}/updatedBy`]: userId
+        })
+      }
+    },
+    onUpdateShape: (shapeId: string, property: keyof Shape, value: any) => {
+      if (isFirebaseAvailable()) {
+        if (property === 'selected') return // selected는 동기화하지 않음
+        const userId = 'admin'
+        updateBoardData({
+          [`shapes/${shapeId}/${property}`]: value,
+          [`shapes/${shapeId}/updatedAt`]: Date.now(),
+          [`shapes/${shapeId}/updatedBy`]: userId
+        })
+      }
+    },
+    onDeleteShape: (shapeId: string) => {
+      if (isFirebaseAvailable()) {
+        const userId = 'admin'
+        updateBoardData({ [`shapes/${shapeId}`]: { id: shapeId, deleted: true, updatedAt: Date.now(), updatedBy: userId } })
+      }
+    },
+    onCreateShape: (shape: Shape) => {
+      if (isFirebaseAvailable()) {
+        // selected 속성 제거 후 저장
+        const { selected, ...rest } = shape
+        updateBoardData({ [`shapes/${shape.id}`]: rest })
+      }
+    }
+  }, {
+    drawDebounceMs: 200,
+    moveThrottleMs: 300,
+    resizeThrottleMs: 300,
+    updateDebounceMs: 300
+  }), [strokes])
 
   const handleToolChange = useCallback((newTool: DrawingTool) => {
     setTool(newTool)
@@ -133,34 +192,54 @@ const AdminPage: React.FC = () => {
     const beforeShape = shapes.find(s => s.id === selectedId)
     if (!beforeShape) return
     shapeActions.updateShapeProperty(selectedId, property, value)
-    debouncedSaveShapeProps() // 속성 변경 시 debounce로 저장
+    syncCallbacks.onUpdateShape(selectedId, property, value) // sync로 update
     setTimeout(() => {
       const afterShape = shapes.find(s => s.id === selectedId)
       if (afterShape) {
         undoRedoActions.recordUpdateShape(selectedId, beforeShape, afterShape)
       }
     }, 0)
-  }, [selectedId, shapeActions, shapes, undoRedoActions, debouncedSaveShapeProps])
+  }, [selectedId, shapeActions, shapes, undoRedoActions, syncCallbacks])
 
   const handleDeleteShape = useCallback(() => {
     if (!selectedId) return
     undoRedoActions.recordDeleteShape(selectedId)
     shapeActions.deleteSelectedShape()
-  }, [selectedId, undoRedoActions, shapeActions])
+    syncCallbacks.onDeleteShape(selectedId)
+  }, [selectedId, undoRedoActions, shapeActions, syncCallbacks])
 
   const handleDuplicateShape = useCallback(() => {
     if (!selectedId) return
     const beforeState = undoRedoActions.getCurrentState()
     shapeActions.duplicateShape(selectedId)
-    
     setTimeout(() => {
       const afterState = undoRedoActions.getCurrentState()
       undoRedoActions.recordBatchAction(beforeState, afterState)
     }, 0)
   }, [selectedId, shapeActions, undoRedoActions])
 
+  // 실시간 구독 (ViewPage와 동일)
+  useEffect(() => {
+    if (!isFirebaseAvailable()) return
+    const unsubscribe = subscribeToSharedBoard((data) => {
+      if (data.shapes) setShapes(prev => mergeLWW(prev, Object.values(data.shapes)))
+      if (data.strokes) setStrokes(prev => mergeLWW(prev, Object.values(data.strokes)))
+    }, (err) => {
+      console.warn('[AdminPage] Firebase 실시간 구독 오류', err)
+    })
+    return () => unsubscribe()
+  }, [])
+
   return (
-    <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
+    <div style={{ 
+      width: '100vw', 
+      height: '100vh', 
+      position: 'relative', 
+      backgroundColor: '#f5f5f5',
+      margin: 0,
+      padding: 0,
+      overflow: 'hidden'
+    }}>
       {/* 관리자 표시 */}
       <div style={{
         position: 'absolute',
@@ -202,20 +281,35 @@ const AdminPage: React.FC = () => {
         onMoveBackward={shapeActions.moveBackward}
       />
 
-      <CanvasWrapper
-        tool={tool}
-        shapes={shapes}
-        strokes={strokes}
-        penColor={penColor}
-        penSize={penSize}
-        gridSize={gridSize}
-        selectedId={selectedId}
-        setShapes={setShapes}
-        setStrokes={setStrokes}
-        setSelectedId={setSelectedId}
-        onToolChange={handleToolChange}
-        showGrid={showGrid}
-      />
+      {/* 캔버스 영역 */}
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100%',
+        height: '100%'
+      }}>
+        <CanvasWrapper
+          tool={tool}
+          shapes={shapes}
+          strokes={strokes}
+          penColor={penColor}
+          penSize={penSize}
+          gridSize={gridSize}
+          selectedId={selectedId}
+          setShapes={setShapes}
+          setStrokes={setStrokes}
+          setSelectedId={setSelectedId}
+          onToolChange={handleToolChange}
+          showGrid={showGrid}
+          userId="admin"
+          onDrawEnd={syncCallbacks.onDrawEnd}
+          onMoveShape={syncCallbacks.onMoveShape}
+          onResizeShape={syncCallbacks.onResizeShape}
+        />
+      </div>
     </div>
   )
 }

@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import { Shape, Point } from '../types'
 import { snapPointToGrid } from '../utils/canvasHelpers'
 import { DEFAULT_SHAPE_WIDTH, DEFAULT_SHAPE_HEIGHT, DEFAULT_FILL_COLOR } from '../utils/constants'
+import { updateBoardData } from '../firebase'
 
 interface UseShapesProps {
   shapes: Shape[]
@@ -15,15 +16,24 @@ export const useShapes = ({ shapes, setShapes, selectedId, setSelectedId, gridSi
   // 새 사각형 생성
   const createRect = useCallback((point: Point) => {
     const snappedPoint = snapPointToGrid(point, gridSize)
+    const userId = (typeof (window as any).userId === 'string' ? (window as any).userId : 'anonymous')
+    const now = Date.now()
     const newRect: Shape = {
-      id: Date.now().toString(),
+      id: now.toString(),
       type: 'rect',
       x: snappedPoint.x,
       y: snappedPoint.y,
       width: DEFAULT_SHAPE_WIDTH,
       height: DEFAULT_SHAPE_HEIGHT,
       fill: DEFAULT_FILL_COLOR,
+      color: '#000000',
       selected: true,
+      movable: true,
+      deletable: true,
+      resizable: true,
+      userId,
+      updatedAt: now,
+      updatedBy: userId,
       meta: {
         isMovable: true,
         isDeletable: true,
@@ -31,17 +41,17 @@ export const useShapes = ({ shapes, setShapes, selectedId, setSelectedId, gridSi
         isErasable: false
       }
     }
-
-    setShapes(prev => [...prev.map(shape => ({ ...shape, selected: false })), newRect])
-    setSelectedId(newRect.id)
+    updateBoardData({ [`shapes/${newRect.id}`]: newRect })
     return newRect.id
-  }, [setShapes, setSelectedId, gridSize])
+  }, [gridSize])
 
   // 새 텍스트 생성
   const createText = useCallback((point: Point, text: string = 'Text') => {
     const snappedPoint = snapPointToGrid(point, gridSize)
+    const userId = (typeof (window as any).userId === 'string' ? (window as any).userId : 'anonymous')
+    const now = Date.now()
     const newText: Shape = {
-      id: Date.now().toString(),
+      id: now.toString(),
       type: 'text',
       x: snappedPoint.x,
       y: snappedPoint.y,
@@ -51,7 +61,14 @@ export const useShapes = ({ shapes, setShapes, selectedId, setSelectedId, gridSi
       fontSize: 16,
       fontWeight: 'normal',
       fontStyle: 'normal',
+      color: '#000000',
       selected: true,
+      movable: true,
+      deletable: true,
+      resizable: true,
+      userId,
+      updatedAt: now,
+      updatedBy: userId,
       meta: {
         isMovable: true,
         isDeletable: true,
@@ -59,24 +76,31 @@ export const useShapes = ({ shapes, setShapes, selectedId, setSelectedId, gridSi
         isErasable: false
       }
     }
-
-    setShapes(prev => [...prev.map(shape => ({ ...shape, selected: false })), newText])
-    setSelectedId(newText.id)
+    updateBoardData({ [`shapes/${newText.id}`]: newText })
     return newText.id
-  }, [setShapes, setSelectedId, gridSize])
+  }, [gridSize])
 
   // 새 이미지 생성
   const createImage = useCallback((point: Point, imageSrc?: string) => {
     const snappedPoint = snapPointToGrid(point, gridSize)
+    const userId = (typeof (window as any).userId === 'string' ? (window as any).userId : 'anonymous')
+    const now = Date.now()
     const newImage: Shape = {
-      id: Date.now().toString(),
+      id: now.toString(),
       type: 'image',
       x: snappedPoint.x,
       y: snappedPoint.y,
       width: DEFAULT_SHAPE_WIDTH,
       height: DEFAULT_SHAPE_WIDTH, // 이미지는 정사각형으로
       imageSrc,
+      color: '#000000',
       selected: true,
+      movable: true,
+      deletable: true,
+      resizable: true,
+      userId,
+      updatedAt: now,
+      updatedBy: userId,
       meta: {
         isMovable: true,
         isDeletable: true,
@@ -84,70 +108,58 @@ export const useShapes = ({ shapes, setShapes, selectedId, setSelectedId, gridSi
         isErasable: false
       }
     }
-
-    setShapes(prev => [...prev.map(shape => ({ ...shape, selected: false })), newImage])
-    setSelectedId(newImage.id)
+    updateBoardData({ [`shapes/${newImage.id}`]: newImage })
     return newImage.id
-  }, [setShapes, setSelectedId, gridSize])
+  }, [gridSize])
 
-  // 셰이프 선택
+  // 셰이프 선택 (선택만 로컬에서 관리)
   const selectShape = useCallback((shapeId: string | null) => {
-    setShapes(prev => prev.map(shape => ({
-      ...shape,
-      selected: shape.id === shapeId
-    })))
     setSelectedId(shapeId)
-  }, [setShapes, setSelectedId])
+  }, [setSelectedId])
 
   // 선택된 셰이프 삭제
   const deleteSelectedShape = useCallback(() => {
     if (!selectedId) return
-
     const shape = shapes.find(s => s.id === selectedId)
     if (!shape?.meta?.isDeletable) return
-
-    setShapes(prev => prev.filter(shape => shape.id !== selectedId))
+    const userId = (typeof (window as any).userId === 'string' ? (window as any).userId : 'anonymous')
+    const now = Date.now()
+    updateBoardData({ [`shapes/${selectedId}`]: { id: selectedId, deleted: true, updatedAt: now, updatedBy: userId } })
     setSelectedId(null)
-  }, [shapes, selectedId, setShapes, setSelectedId])
+  }, [shapes, selectedId, setSelectedId])
 
   // 셰이프 이동
   const moveShape = useCallback((shapeId: string, newPosition: Point) => {
-    setShapes(prev => prev.map(shape => {
-      if (shape.id !== shapeId || !shape.meta?.isMovable) return shape
-
-      return {
-        ...shape,
-        x: Math.max(0, Math.min(newPosition.x, 2160 - (shape.width || DEFAULT_SHAPE_WIDTH))),
-        y: Math.max(0, Math.min(newPosition.y, 3840 - (shape.height || DEFAULT_SHAPE_HEIGHT)))
-      }
-    }))
-  }, [setShapes])
+    updateBoardData({ [`shapes/${shapeId}/x`]: newPosition.x, [`shapes/${shapeId}/y`]: newPosition.y })
+  }, [])
 
   // 셰이프 복제
   const duplicateShape = useCallback((shapeId: string) => {
     const shape = shapes.find(s => s.id === shapeId)
     if (!shape) return
 
+    const now = Date.now()
+    const userId = (typeof (window as any).userId === 'string' ? (window as any).userId : 'anonymous')
     const duplicatedShape: Shape = {
       ...shape,
-      id: Date.now().toString(),
+      id: now.toString(),
       x: shape.x + 20,
       y: shape.y + 20,
-      selected: true
+      selected: true,
+      updatedAt: now,
+      updatedBy: userId
     }
 
     setShapes(prev => [...prev.map(s => ({ ...s, selected: false })), duplicatedShape])
     setSelectedId(duplicatedShape.id)
+    // 동기화(write)
+    updateBoardData({ [`shapes/${duplicatedShape.id}`]: { ...duplicatedShape, selected: undefined } })
   }, [shapes, setShapes, setSelectedId])
 
   // 셰이프 속성 업데이트
   const updateShapeProperty = useCallback((shapeId: string, property: keyof Shape, value: any) => {
-    setShapes(prev => prev.map(shape => 
-      shape.id === shapeId 
-        ? { ...shape, [property]: value }
-        : shape
-    ))
-  }, [setShapes])
+    updateBoardData({ [`shapes/${shapeId}/${property}`]: value })
+  }, [])
 
   // 선택 해제
   const clearSelection = useCallback(() => {

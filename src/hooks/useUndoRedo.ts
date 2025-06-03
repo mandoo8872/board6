@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { UndoRedoAction, BoardState, Shape, Stroke } from '../types'
+import { Shape, Stroke, BoardState, UndoRedoAction } from '../types'
 
 interface UseUndoRedoProps {
   shapes: Shape[]

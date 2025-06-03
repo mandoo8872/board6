@@ -3,6 +3,8 @@ import { DrawingTool, Stroke } from '../types'
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from '../utils/constants'
 import { clearCanvas, drawAllStrokes, drawStroke } from '../utils/canvasHelpers'
 import { debounce } from '../utils/debounceThrottle'
+import { updateBoardData } from '../firebase'
+import { getDatabase, ref, get, set } from 'firebase/database'
 
 interface DrawLayerProps {
   tool: DrawingTool
@@ -76,7 +78,11 @@ const DrawLayer: React.FC<DrawLayerProps> = ({
       tool,
       color: tool === 'eraser' ? '#ffffff' : penColor,
       size: penSize,
-      points: [{ x, y }]
+      points: [{ x, y }],
+      userId: (typeof (window as any).userId === 'string' ? (window as any).userId : 'anonymous'),
+      updatedAt: Date.now(),
+      updatedBy: (typeof (window as any).userId === 'string' ? (window as any).userId : 'anonymous'),
+      isErasable: true
     }
   }, [tool, penColor, penSize])
 
@@ -91,16 +97,27 @@ const DrawLayer: React.FC<DrawLayerProps> = ({
     const y = clientY - rect.top
 
     currentStrokeRef.current.points.push({ x, y })
-    setStrokes(prev => [...prev, currentStrokeRef.current!])
   }, [setStrokes])
 
-  const handleEnd = useCallback(() => {
+  const handleEnd = useCallback(async () => {
     if (!isDrawingRef.current || !currentStrokeRef.current) return
 
     isDrawingRef.current = false
+    // points가 2개 이상일 때만 저장
+    if (currentStrokeRef.current.points.length > 1) {
+      setStrokes(prev => [...prev, currentStrokeRef.current!])
+      // 실시간 DB에 strokes 경로가 없으면 먼저 빈 객체로 생성
+      const db = getDatabase()
+      const strokesRef = ref(db, '/sharedBoardData/strokes')
+      const snapshot = await get(strokesRef)
+      if (!snapshot.exists()) {
+        await set(strokesRef, {})
+      }
+      updateBoardData({ [`strokes/${currentStrokeRef.current.id}`]: currentStrokeRef.current })
+    }
     currentStrokeRef.current = null
     onDrawEnd?.()
-  }, [onDrawEnd])
+  }, [onDrawEnd, setStrokes])
 
   // 마우스 이벤트 핸들러
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -155,6 +172,30 @@ const DrawLayer: React.FC<DrawLayerProps> = ({
     // ViewPage에서만 실시간 동기화
     if (debouncedSync) debouncedSync()
   }, [strokes, currentStrokeRef.current, debouncedSync])
+
+  // 지우개로 스트로크 삭제 (포인트 기반)
+  const eraseAtPoint = useCallback((point: { x: number; y: number }, eraseRadius: number = 10) => {
+    setStrokes(prev => {
+      const toDelete: Stroke[] = []
+      const remain = prev.filter(stroke => {
+        if (!stroke.isErasable) return true
+        const hit = stroke.points.some(strokePoint => {
+          const distance = Math.sqrt(
+            Math.pow(strokePoint.x - point.x, 2) + 
+            Math.pow(strokePoint.y - point.y, 2)
+          )
+          return distance <= eraseRadius
+        })
+        if (hit) toDelete.push(stroke)
+        return !hit
+      })
+      // Firebase에서 삭제(tombstone)
+      toDelete.forEach(stroke => {
+        updateBoardData({ [`strokes/${stroke.id}`]: { id: stroke.id, deleted: true, updatedAt: Date.now(), updatedBy: stroke.userId } })
+      })
+      return remain
+    })
+  }, [setStrokes])
 
   return (
     <canvas

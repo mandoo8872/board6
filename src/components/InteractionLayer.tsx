@@ -25,6 +25,7 @@ interface InteractionLayerProps {
   onResizeShape?: (shapeId: string, newSize: { width: number; height: number; x?: number; y?: number }) => void
   onSyncShapes?: (shapes: Shape[]) => void
   onEditEnd?: (shapes: Shape[]) => void
+  setShapes: React.Dispatch<React.SetStateAction<Shape[]>>
 }
 
 // resize handle 위치 타입
@@ -51,7 +52,8 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
   onMoveShape,
   onResizeShape,
   onSyncShapes,
-  onEditEnd
+  onEditEnd,
+  setShapes
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const isDrawingRef = useRef(false)
@@ -59,12 +61,37 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
   const autoReturnTimerRef = useRef<number | null>(null)
   const isDraggingRef = useRef(false)
   const dragStartPointRef = useRef<Point | null>(null)
+  const originalPositionRef = useRef<Point | null>(null)
   const selectedShapeRef = useRef<Shape | null>(null)
   const isResizingRef = useRef(false)
   const resizeStartPointRef = useRef<Point | null>(null)
   const originalSizeRef = useRef<{ width: number; height: number } | null>(null)
   const resizeHandlePositionRef = useRef<ResizeHandlePosition | null>(null)
+  const shapesRef = useRef(shapes)
   const throttledSync = useRef(onSyncShapes ? throttle(onSyncShapes, 300) : undefined).current
+  const throttledMove = useRef(onMoveShape ? throttle(onMoveShape, 300) : undefined).current
+  const throttledResize = useRef(onResizeShape ? throttle(onResizeShape, 300) : undefined).current
+
+  // shapes 상태 업데이트
+  useEffect(() => {
+    shapesRef.current = shapes
+  }, [shapes])
+
+  // 드래그 중 프론트 상태 업데이트
+  const updateShapePosition = useCallback((shapeId: string, newPosition: Point) => {
+    if (!setShapes) return
+    setShapes(prev => prev.map(s => 
+      s.id === shapeId ? { ...s, x: newPosition.x, y: newPosition.y } : s
+    ))
+  }, [setShapes])
+
+  // 리사이즈 중 프론트 상태 업데이트
+  const updateShapeSize = useCallback((shapeId: string, newSize: { width: number; height: number; x?: number; y?: number }) => {
+    if (!setShapes) return
+    setShapes(prev => prev.map(s => 
+      s.id === shapeId ? { ...s, ...newSize } : s
+    ))
+  }, [setShapes])
 
   // 자동 도구 복귀 타이머 설정
   const resetAutoReturnTimer = useCallback(() => {
@@ -186,6 +213,7 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
             isDraggingRef.current = true
             dragStartPointRef.current = point
             selectedShapeRef.current = hitShape
+            originalPositionRef.current = { x: hitShape.x, y: hitShape.y }
           }
         } else {
           onSelectShape(null)
@@ -230,7 +258,7 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
         break
 
       case 'select':
-        if (isResizingRef.current && selectedShapeRef.current && resizeStartPointRef.current && originalSizeRef.current && onResizeShape) {
+        if (isResizingRef.current && selectedShapeRef.current && resizeStartPointRef.current && originalSizeRef.current) {
           const dx = point.x - resizeStartPointRef.current.x
           const dy = point.y - resizeStartPointRef.current.y
           const position = resizeHandlePositionRef.current
@@ -284,38 +312,29 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
           const snappedX = Math.round(newX / gridSize) * gridSize
           const snappedY = Math.round(newY / gridSize) * gridSize
           
-          onResizeShape(selectedShapeRef.current.id, {
+          // 프론트 상태만 업데이트
+          updateShapeSize(selectedShapeRef.current.id, {
             width: snappedWidth,
             height: snappedHeight,
             x: snappedX,
             y: snappedY
           })
-          if (throttledSync) throttledSync(shapes)
         }
-        else if (isDraggingRef.current && selectedShapeRef.current && dragStartPointRef.current && onMoveShape) {
+        else if (isDraggingRef.current && selectedShapeRef.current && dragStartPointRef.current && originalPositionRef.current) {
           const dx = point.x - dragStartPointRef.current.x
           const dy = point.y - dragStartPointRef.current.y
-          
           const newPosition = {
-            x: selectedShapeRef.current.x + dx,
-            y: selectedShapeRef.current.y + dy
+            x: originalPositionRef.current.x + dx,
+            y: originalPositionRef.current.y + dy
           }
-          
-          onMoveShape(selectedShapeRef.current.id, newPosition)
-          dragStartPointRef.current = point
-          
-          selectedShapeRef.current = {
-            ...selectedShapeRef.current,
-            x: newPosition.x,
-            y: newPosition.y
-          }
-          if (throttledSync) throttledSync(shapes)
+          // 프론트 상태만 업데이트
+          updateShapePosition(selectedShapeRef.current.id, newPosition)
         }
         break
     }
 
     e.preventDefault()
-  }, [tool, currentStrokeId, onAddPointToStroke, onEraseAtPoint, getCanvasPoint, resetAutoReturnTimer, onMoveShape, onResizeShape, gridSize, shapes, throttledSync])
+  }, [tool, currentStrokeId, onAddPointToStroke, onEraseAtPoint, getCanvasPoint, resetAutoReturnTimer, gridSize, updateShapePosition, updateShapeSize])
 
   // 포인터 업 이벤트
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
@@ -338,29 +357,90 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
 
       case 'select':
         if (isResizingRef.current) {
+          // 리사이즈 종료 시 마지막 크기/위치 onResizeShape로 전달
+          if (selectedShapeRef.current && resizeStartPointRef.current && originalSizeRef.current && onResizeShape) {
+            const point = getCanvasPoint(e.clientX, e.clientY)
+            const dx = point.x - resizeStartPointRef.current.x
+            const dy = point.y - resizeStartPointRef.current.y
+            const position = resizeHandlePositionRef.current
+            let newWidth = originalSizeRef.current.width
+            let newHeight = originalSizeRef.current.height
+            let newX = selectedShapeRef.current.x
+            let newY = selectedShapeRef.current.y
+            switch (position) {
+              case 'top-left':
+                newWidth = Math.max(50, originalSizeRef.current.width - dx)
+                newHeight = Math.max(50, originalSizeRef.current.height - dy)
+                newX = selectedShapeRef.current.x + (originalSizeRef.current.width - newWidth)
+                newY = selectedShapeRef.current.y + (originalSizeRef.current.height - newHeight)
+                break
+              case 'top':
+                newHeight = Math.max(50, originalSizeRef.current.height - dy)
+                newY = selectedShapeRef.current.y + (originalSizeRef.current.height - newHeight)
+                break
+              case 'top-right':
+                newWidth = Math.max(50, originalSizeRef.current.width + dx)
+                newHeight = Math.max(50, originalSizeRef.current.height - dy)
+                newY = selectedShapeRef.current.y + (originalSizeRef.current.height - newHeight)
+                break
+              case 'left':
+                newWidth = Math.max(50, originalSizeRef.current.width - dx)
+                newX = selectedShapeRef.current.x + (originalSizeRef.current.width - newWidth)
+                break
+              case 'right':
+                newWidth = Math.max(50, originalSizeRef.current.width + dx)
+                break
+              case 'bottom-left':
+                newWidth = Math.max(50, originalSizeRef.current.width - dx)
+                newHeight = Math.max(50, originalSizeRef.current.height + dy)
+                newX = selectedShapeRef.current.x + (originalSizeRef.current.width - newWidth)
+                break
+              case 'bottom':
+                newHeight = Math.max(50, originalSizeRef.current.height + dy)
+                break
+              case 'bottom-right':
+                newWidth = Math.max(50, originalSizeRef.current.width + dx)
+                newHeight = Math.max(50, originalSizeRef.current.height + dy)
+                break
+            }
+            const snappedWidth = Math.round(newWidth / gridSize) * gridSize
+            const snappedHeight = Math.round(newHeight / gridSize) * gridSize
+            const snappedX = Math.round(newX / gridSize) * gridSize
+            const snappedY = Math.round(newY / gridSize) * gridSize
+            onResizeShape(selectedShapeRef.current.id, {
+              width: snappedWidth,
+              height: snappedHeight,
+              x: snappedX,
+              y: snappedY
+            })
+          }
           isResizingRef.current = false
           resizeStartPointRef.current = null
           originalSizeRef.current = null
           resizeHandlePositionRef.current = null
-          if (onEditEnd) onEditEnd(shapes)
+          if (onEditEnd) onEditEnd(shapesRef.current)
         }
         else if (isDraggingRef.current && selectedShapeRef.current && onMoveShape) {
-          const finalPosition = snapPointToGrid({
-            x: selectedShapeRef.current.x,
-            y: selectedShapeRef.current.y
-          }, gridSize)
-          
-          onMoveShape(selectedShapeRef.current.id, finalPosition)
+          // shapesRef.current에서 최신 위치를 가져옴
+          const latestShape = shapesRef.current.find(s => s.id === selectedShapeRef.current!.id)
+          if (latestShape) {
+            const finalPosition = snapPointToGrid({
+              x: latestShape.x,
+              y: latestShape.y
+            }, gridSize)
+            onMoveShape(selectedShapeRef.current.id, finalPosition)
+          }
           isDraggingRef.current = false
           dragStartPointRef.current = null
+          originalPositionRef.current = null // 드래그 종료 시 초기화
           selectedShapeRef.current = null
-          if (onEditEnd) onEditEnd(shapes)
+          if (onEditEnd) onEditEnd(shapesRef.current)
         }
         break
     }
 
     e.preventDefault()
-  }, [tool, onFinishStroke, resetAutoReturnTimer, onMoveShape, gridSize, shapes, onEditEnd])
+  }, [tool, onFinishStroke, resetAutoReturnTimer, onMoveShape, gridSize, onEditEnd, getCanvasPoint, onResizeShape])
 
   // 키보드 이벤트 처리
   useEffect(() => {
