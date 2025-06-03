@@ -1,18 +1,137 @@
-import React, { useRef, useEffect } from 'react'
-import { Stroke } from '../types'
+import React, { useRef, useEffect, useCallback } from 'react'
+import { DrawingTool, Stroke } from '../types'
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from '../utils/constants'
-import { clearCanvas, drawAllStrokes } from '../utils/canvasHelpers'
+import { clearCanvas, drawAllStrokes, drawStroke } from '../utils/canvasHelpers'
 import { debounce } from '../utils/debounceThrottle'
 
 interface DrawLayerProps {
+  tool: DrawingTool
+  penColor: string
+  penSize: number
   strokes: Stroke[]
-  currentStroke: Stroke | null
-  onSyncStrokes?: (strokes: Stroke[]) => void
+  setStrokes: React.Dispatch<React.SetStateAction<Stroke[]>>
+  onDrawEnd?: () => void
 }
 
-const DrawLayer: React.FC<DrawLayerProps> = ({ strokes, currentStroke, onSyncStrokes }) => {
+const DrawLayer: React.FC<DrawLayerProps> = ({
+  tool,
+  penColor,
+  penSize,
+  strokes,
+  setStrokes,
+  onDrawEnd
+}) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const debouncedSync = useRef(onSyncStrokes ? debounce(onSyncStrokes, 200) : undefined).current
+  const isDrawingRef = useRef(false)
+  const currentStrokeRef = useRef<Stroke | null>(null)
+  const debouncedSync = useRef(onDrawEnd ? debounce(onDrawEnd, 200) : undefined).current
+
+  // 캔버스 초기화
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    // 캔버스 크기를 부모 요소에 맞춤
+    const resizeCanvas = () => {
+      const parent = canvas.parentElement
+      if (!parent) return
+      canvas.width = parent.clientWidth
+      canvas.height = parent.clientHeight
+    }
+
+    resizeCanvas()
+    window.addEventListener('resize', resizeCanvas)
+    return () => window.removeEventListener('resize', resizeCanvas)
+  }, [])
+
+  // 스트로크 그리기
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    strokes.forEach(stroke => drawStroke(ctx, stroke))
+  }, [strokes])
+
+  // 이벤트 핸들러
+  const handleStart = useCallback((clientX: number, clientY: number) => {
+    if (tool !== 'pen' && tool !== 'eraser') return
+
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const rect = canvas.getBoundingClientRect()
+    const x = clientX - rect.left
+    const y = clientY - rect.top
+
+    isDrawingRef.current = true
+    currentStrokeRef.current = {
+      id: Date.now().toString(),
+      tool,
+      color: tool === 'eraser' ? '#ffffff' : penColor,
+      size: penSize,
+      points: [{ x, y }]
+    }
+  }, [tool, penColor, penSize])
+
+  const handleMove = useCallback((clientX: number, clientY: number) => {
+    if (!isDrawingRef.current || !currentStrokeRef.current) return
+
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const rect = canvas.getBoundingClientRect()
+    const x = clientX - rect.left
+    const y = clientY - rect.top
+
+    currentStrokeRef.current.points.push({ x, y })
+    setStrokes(prev => [...prev, currentStrokeRef.current!])
+  }, [setStrokes])
+
+  const handleEnd = useCallback(() => {
+    if (!isDrawingRef.current || !currentStrokeRef.current) return
+
+    isDrawingRef.current = false
+    currentStrokeRef.current = null
+    onDrawEnd?.()
+  }, [onDrawEnd])
+
+  // 마우스 이벤트 핸들러
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    handleStart(e.clientX, e.clientY)
+  }, [handleStart])
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    handleMove(e.clientX, e.clientY)
+  }, [handleMove])
+
+  const handleMouseUp = useCallback(() => {
+    handleEnd()
+  }, [handleEnd])
+
+  // 터치 이벤트 핸들러
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    e.preventDefault()
+    const touch = e.touches[0]
+    handleStart(touch.clientX, touch.clientY)
+  }, [handleStart])
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    e.preventDefault()
+    const touch = e.touches[0]
+    handleMove(touch.clientX, touch.clientY)
+  }, [handleMove])
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    e.preventDefault()
+    handleEnd()
+  }, [handleEnd])
 
   // 스트로크 렌더링
   useEffect(() => {
@@ -29,13 +148,13 @@ const DrawLayer: React.FC<DrawLayerProps> = ({ strokes, currentStroke, onSyncStr
     drawAllStrokes(ctx, strokes)
 
     // 현재 그리고 있는 스트로크 그리기
-    if (currentStroke) {
-      drawAllStrokes(ctx, [currentStroke])
+    if (currentStrokeRef.current) {
+      drawStroke(ctx, currentStrokeRef.current)
     }
 
     // ViewPage에서만 실시간 동기화
-    if (debouncedSync) debouncedSync(strokes)
-  }, [strokes, currentStroke, debouncedSync])
+    if (debouncedSync) debouncedSync()
+  }, [strokes, currentStrokeRef.current, debouncedSync])
 
   return (
     <canvas
@@ -47,8 +166,16 @@ const DrawLayer: React.FC<DrawLayerProps> = ({ strokes, currentStroke, onSyncStr
         top: 0,
         left: 0,
         zIndex: 2,
-        pointerEvents: 'auto'
+        pointerEvents: 'auto',
+        touchAction: 'none' // 터치 이벤트가 브라우저 기본 동작을 방해하지 않도록 설정
       }}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     />
   )
 }

@@ -7,4 +7,12 @@
     "allowSyntheticDefaultImports": true
   },
   "include": ["vite.config.ts"]
-} 
+}
+// Vite 환경변수 타입 정의는 src/env.d.ts 파일에 아래와 같이 추가하세요:
+// interface ImportMetaEnv {
+//   VITE_FIREBASE_DATABASE_URL: string
+//   // ...다른 환경변수
+// }
+// interface ImportMeta {
+//   readonly env: ImportMetaEnv
+// } 

@@ -1,5 +1,5 @@
-export type DrawingTool = 'pen' | 'eraser' | 'select' | 'rect'
-export type CommandTool = 'text' | 'image' | 'undo' | 'redo' | 'grid' | 'settings' | 'save' | 'load' | 'push' | 'pull'
+export type DrawingTool = 'select' | 'pen' | 'eraser' | 'rect' | 'text' | 'image'
+export type CommandTool = 'undo' | 'redo' | 'save' | 'load' | 'push' | 'pull' | 'settings' | 'image' | 'text'
 export type ToolbarTool = DrawingTool | CommandTool
 
 export interface Point {
@@ -9,9 +9,10 @@ export interface Point {
 
 export interface Stroke {
   id: string
-  points: Point[]
+  tool: DrawingTool
   color: string
   size: number
+  points: Point[]
   isErasable?: boolean
 }
 

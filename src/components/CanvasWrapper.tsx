@@ -18,6 +18,7 @@ interface ExtendedCanvasWrapperProps extends Omit<CanvasWrapperProps, 'setShapes
   onPushPull?: (action: 'push' | 'pull') => void
   onCommand?: (command: string) => void
   onToolChange: (tool: DrawingTool) => void
+  showGrid?: boolean
 }
 
 const CanvasWrapper: React.FC<ExtendedCanvasWrapperProps> = ({
@@ -36,11 +37,11 @@ const CanvasWrapper: React.FC<ExtendedCanvasWrapperProps> = ({
   onLoad,
   onPushPull,
   onCommand,
-  onToolChange
+  onToolChange,
+  showGrid = true
 }) => {
   const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null)
   const [currentStrokeId, setCurrentStrokeId] = useState<string | null>(null)
-  const [showGrid] = useState(true)
 
   // Undo/Redo 훅
   const undoRedoActions = useUndoRedo({
@@ -88,12 +89,13 @@ const CanvasWrapper: React.FC<ExtendedCanvasWrapperProps> = ({
 
   // 스트로크 시작 (Undo 기록 포함)
   const handleStartStroke = useCallback((point: Point): string => {
-    const strokeId = strokeActions.startStroke(point)
+    const strokeId = strokeActions.startStroke(point, tool)
     setCurrentStrokeId(strokeId)
     
     // 현재 그리고 있는 스트로크 설정
     const newStroke: Stroke = {
       id: strokeId,
+      tool: tool,
       points: [point],
       color: penColor,
       size: penSize,
@@ -102,7 +104,7 @@ const CanvasWrapper: React.FC<ExtendedCanvasWrapperProps> = ({
     setCurrentStroke(newStroke)
     
     return strokeId
-  }, [strokeActions, penColor, penSize])
+  }, [strokeActions, penColor, penSize, tool])
 
   // 스트로크에 포인트 추가
   const handleAddPointToStroke = useCallback((strokeId: string, point: Point) => {
@@ -325,8 +327,11 @@ const CanvasWrapper: React.FC<ExtendedCanvasWrapperProps> = ({
         
         {/* Draw Layer: 스트로크 */}
         <DrawLayer
+          tool={tool}
+          penColor={penColor}
+          penSize={penSize}
           strokes={strokes}
-          currentStroke={currentStroke}
+          setStrokes={setStrokes}
         />
         
         {/* Interaction Layer: 이벤트 처리 */}

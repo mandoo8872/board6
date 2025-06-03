@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useCallback } from 'react'
+import React, { useRef, useEffect, useCallback, useState } from 'react'
 import { Shape } from '../types'
 import { CANVAS_WIDTH, CANVAS_HEIGHT, RESIZE_HANDLE_SIZE, RESIZE_HANDLE_COLOR } from '../utils/constants'
 import { clearCanvas, drawGrid, drawAllShapes } from '../utils/canvasHelpers'
@@ -20,7 +20,17 @@ const BaseLayer: React.FC<BaseLayerProps> = ({
   onSyncShapes
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [floorImage, setFloorImage] = useState<HTMLImageElement | null>(null)
   const throttledSync = useRef(onSyncShapes ? throttle(onSyncShapes, 300) : undefined).current
+
+  // 배경 이미지 로드
+  useEffect(() => {
+    const img = new Image()
+    img.src = '/floor.png'
+    img.onload = () => {
+      setFloorImage(img)
+    }
+  }, [])
 
   // resize handle 그리기
   const drawResizeHandle = useCallback((ctx: CanvasRenderingContext2D, x: number, y: number) => {
@@ -55,6 +65,11 @@ const BaseLayer: React.FC<BaseLayerProps> = ({
 
     // 캔버스 초기화
     clearCanvas(ctx)
+
+    // 배경 이미지 그리기
+    if (floorImage) {
+      ctx.drawImage(floorImage, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
+    }
 
     // 그리드 그리기
     if (showGrid) {
@@ -94,7 +109,7 @@ const BaseLayer: React.FC<BaseLayerProps> = ({
 
     // 실시간 동기화
     if (throttledSync) throttledSync(shapes)
-  }, [shapes, selectedId, gridSize, showGrid, drawResizeHandle, throttledSync])
+  }, [shapes, selectedId, gridSize, showGrid, drawResizeHandle, throttledSync, floorImage])
 
   return (
     <canvas

@@ -17,6 +17,7 @@ const AdminPage: React.FC = () => {
   const [penColor, setPenColor] = useState(DEFAULT_PEN_COLOR)
   const [penSize, setPenSize] = useState(DEFAULT_PEN_SIZE)
   const [gridSize, setGridSize] = useState(DEFAULT_GRID_SIZE)
+  const [showGrid, setShowGrid] = useState(true)
 
   const selectedShape = shapes.find(shape => shape.id === selectedId) || null
 
@@ -186,6 +187,8 @@ const AdminPage: React.FC = () => {
         onPenColorChange={setPenColor}
         penSize={penSize}
         onPenSizeChange={setPenSize}
+        showGrid={showGrid}
+        onShowGridChange={setShowGrid}
       />
 
       <PropertiesPanel
@@ -211,6 +214,7 @@ const AdminPage: React.FC = () => {
         setStrokes={setStrokes}
         setSelectedId={setSelectedId}
         onToolChange={handleToolChange}
+        showGrid={showGrid}
       />
     </div>
   )

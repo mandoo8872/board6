@@ -226,6 +226,7 @@ const ViewPage: React.FC = () => {
           setStrokes={setStrokes}
           setSelectedId={setSelectedId}
           onToolChange={handleToolChange}
+          showGrid={false}
         />
       </div>
 

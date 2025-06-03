@@ -3,7 +3,7 @@ import { CANVAS_WIDTH, CANVAS_HEIGHT, GRID_COLOR, GRID_LINE_WIDTH, SELECTED_COLO
 
 // 캔버스 초기화
 export const clearCanvas = (ctx: CanvasRenderingContext2D) => {
-  ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
+  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
 }
 
 // 그리드 그리기

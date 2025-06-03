@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { Stroke, Point } from '../types'
+import { Stroke, Point, DrawingTool } from '../types'
 
 interface UseStrokeProps {
   setStrokes: (fn: (prev: Stroke[]) => Stroke[]) => void
@@ -9,9 +9,10 @@ interface UseStrokeProps {
 
 export const useStroke = ({ setStrokes, penColor, penSize }: UseStrokeProps) => {
   // 새 스트로크 시작
-  const startStroke = useCallback((point: Point) => {
+  const startStroke = useCallback((point: Point, tool: DrawingTool) => {
     const newStroke: Stroke = {
       id: Date.now().toString(),
+      tool,
       points: [point],
       color: penColor,
       size: penSize,

@@ -6,7 +6,7 @@ import { getDatabase, ref, onValue, set, off, DatabaseReference, DataSnapshot } 
 const firebaseConfig = {
   apiKey: "AIzaSyBF1sBC8tegqpQzlhZDkfRyCkG1N-RqHZM",
   authDomain: "board6-a2c5a.firebaseapp.com",
-  databaseURL: "https://board6-a2c5a-default-rtdb.firebaseio.com/",
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
   projectId: "board6-a2c5a",
   storageBucket: "board6-a2c5a.appspot.com",
   messagingSenderId: "192957529739",
