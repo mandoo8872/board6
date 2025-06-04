@@ -174,28 +174,15 @@ const DrawLayer: React.FC<DrawLayerProps> = ({
   }, [strokes, currentStrokeRef.current, debouncedSync])
 
   // 지우개로 스트로크 삭제 (포인트 기반)
-  const eraseAtPoint = useCallback((point: { x: number; y: number }, eraseRadius: number = 10) => {
-    setStrokes(prev => {
-      const toDelete: Stroke[] = []
-      const remain = prev.filter(stroke => {
-        if (!stroke.isErasable) return true
-        const hit = stroke.points.some(strokePoint => {
-          const distance = Math.sqrt(
-            Math.pow(strokePoint.x - point.x, 2) + 
-            Math.pow(strokePoint.y - point.y, 2)
-          )
-          return distance <= eraseRadius
-        })
-        if (hit) toDelete.push(stroke)
-        return !hit
-      })
-      // Firebase에서 삭제(tombstone)
-      toDelete.forEach(stroke => {
-        updateBoardData({ [`strokes/${stroke.id}`]: { id: stroke.id, deleted: true, updatedAt: Date.now(), updatedBy: stroke.userId } })
-      })
-      return remain
-    })
-  }, [setStrokes])
+  // const eraseAtPoint = useCallback((point: { x: number; y: number }, eraseRadius: number = 10) => {
+  //   setStrokes(prev => prev.filter(stroke => {
+  //     return !stroke.points.some(p => {
+  //       const dx = p.x - point.x
+  //       const dy = p.y - point.y
+  //       return Math.sqrt(dx * dx + dy * dy) < eraseRadius
+  //     })
+  //   }))
+  // }, [])
 
   return (
     <canvas

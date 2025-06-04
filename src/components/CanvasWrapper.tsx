@@ -68,12 +68,12 @@ const CanvasWrapper: React.FC<CanvasWrapperProps> = ({
   }, [shapes, setShapes])
 
   // 드래그/리사이즈 중 프론트 상태 업데이트
-  const handleShapeUpdate = useCallback((shapeId: string, updates: Partial<Shape>) => {
-    if (!setShapesRef.current) return
-    setShapesRef.current(prev => prev.map(s => 
-      s.id === shapeId ? { ...s, ...updates } : s
-    ))
-  }, [])
+  // const handleShapeUpdate = useCallback((shapeId: string, updates: Partial<Shape>) => {
+  //   if (!setShapesRef.current) return
+  //   setShapesRef.current(prev => prev.map(s => 
+  //     s.id === shapeId ? { ...s, ...updates } : s
+  //   ))
+  // }, [])
 
   // 드래그/리사이즈 종료 시 Firebase 동기화
   const handleShapeSync = useCallback((shapeId: string, updates: Partial<Shape>) => {
@@ -226,19 +226,11 @@ const CanvasWrapper: React.FC<CanvasWrapperProps> = ({
   }, [selectedId, shapeActions, undoRedoActions])
 
   // 셰이프 이동 (Undo 기록 포함)
-  const handleMoveShape = useCallback((shapeId: string, newPosition: Point) => {
-    const shape = shapes.find((s: Shape) => s.id === shapeId)
-    if (!shape || shape.meta?.isMovable === false) return
-
-    const beforeState = undoRedoActions.getCurrentState()
-    shapeActions.moveShape(shapeId, newPosition)
-    
-    // 다음 프레임에서 Undo 기록
-    setTimeout(() => {
-      const afterState = undoRedoActions.getCurrentState()
-      undoRedoActions.recordBatchAction(beforeState, afterState)
-    }, 0)
-  }, [shapes, shapeActions, undoRedoActions])
+  // const handleMoveShape = useCallback((shapeId: string, newPosition: Point) => {
+  //   setShapes(prev => prev.map(shape =>
+  //     shape.id === shapeId ? { ...shape, x: newPosition.x, y: newPosition.y } : shape
+  //   ))
+  // }, [])
 
   // 셰이프 생성 (Undo 기록 포함)
   const handleCreateRect = useCallback((point: Point): string => {

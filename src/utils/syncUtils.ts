@@ -1,67 +1,26 @@
-import { debounce, throttle } from './debounceThrottle'
-import { SyncCallbacks, SyncConfig, DEFAULT_SYNC_CONFIG, Shape } from '../types'
+import { Shape } from '../types'
 import { isFirebaseAvailable, updateBoardData, saveStrokesToFirebase } from '../firebase'
+
+export interface SyncCallbacks {
+  onDrawEnd?: () => void
+  onMoveShape?: (shapeId: string, newPosition: { x: number; y: number }) => void
+  onResizeShape?: (shapeId: string, newSize: { width: number; height: number; x?: number; y?: number }) => void
+  onUpdateShape?: (shapeId: string, property: keyof Shape, value: any) => void
+  onDeleteShape?: (shapeId: string) => void
+}
 
 /**
  * 동기화 콜백을 생성하는 함수
  * @param callbacks 동기화 콜백 함수들
- * @param config 동기화 설정
  * @returns 동기화된 콜백 함수들
  */
-export function createSyncCallbacks({
-  onDrawEnd,
-  onMoveShape,
-  onResizeShape,
-  onUpdateShape,
-  onDeleteShape,
-  onCreateShape
-}: {
-  onDrawEnd?: () => void
-  onMoveShape?: (shapeId: string, newPosition: { x: number; y: number }) => void
-  onResizeShape?: (shapeId: string, newSize: { width: number; height: number; x?: number; y?: number }) => void
-  onUpdateShape?: (shapeId: string, property: string, value: any) => void
-  onDeleteShape?: (shapeId: string) => void
-  onCreateShape?: (shape: Shape) => void
-}, {
-  drawDebounceMs = 200,
-  moveThrottleMs = 300,
-  resizeThrottleMs = 300,
-  updateDebounceMs = 300
-} = {}) {
-  // 드래그/리사이즈 중에는 호출되지 않도록 debounce/throttle 제거
-  const handleMoveShape = (shapeId: string, newPosition: { x: number; y: number }) => {
-    if (onMoveShape) {
-      onMoveShape(shapeId, newPosition)
-    }
-  }
-
-  const handleResizeShape = (shapeId: string, newSize: { width: number; height: number; x?: number; y?: number }) => {
-    if (onResizeShape) {
-      onResizeShape(shapeId, newSize)
-    }
-  }
-
-  // 필기(Stroke)는 여전히 debounce 적용
-  const handleDrawEnd = debounce(() => {
-    if (onDrawEnd) {
-      onDrawEnd()
-    }
-  }, drawDebounceMs)
-
-  // 속성 변경은 여전히 debounce 적용
-  const handleUpdateShape = debounce((shapeId: string, property: string, value: any) => {
-    if (onUpdateShape) {
-      onUpdateShape(shapeId, property, value)
-    }
-  }, updateDebounceMs)
-
+export const createSyncCallbacks = (callbacks: SyncCallbacks) => {
   return {
-    onDrawEnd: handleDrawEnd,
-    onMoveShape: handleMoveShape,
-    onResizeShape: handleResizeShape,
-    onUpdateShape: handleUpdateShape,
-    onDeleteShape,
-    onCreateShape
+    onDrawEnd: callbacks.onDrawEnd,
+    onMoveShape: callbacks.onMoveShape,
+    onResizeShape: callbacks.onResizeShape,
+    onUpdateShape: callbacks.onUpdateShape,
+    onDeleteShape: callbacks.onDeleteShape
   }
 }
 

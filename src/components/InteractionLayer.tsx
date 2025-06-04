@@ -2,7 +2,6 @@ import React, { useRef, useEffect, useCallback } from 'react'
 import { DrawingTool, Point, Shape } from '../types'
 import { CANVAS_WIDTH, CANVAS_HEIGHT, AUTO_TOOL_RETURN_DELAY, RESIZE_HANDLE_SIZE } from '../utils/constants'
 import { hitTest, snapPointToGrid } from '../utils/canvasHelpers'
-import { throttle } from '../utils/debounceThrottle'
 
 interface InteractionLayerProps {
   tool: DrawingTool
@@ -23,7 +22,6 @@ interface InteractionLayerProps {
   onDuplicateSelectedShape?: () => void
   onMoveShape?: (shapeId: string, newPosition: Point) => void
   onResizeShape?: (shapeId: string, newSize: { width: number; height: number; x?: number; y?: number }) => void
-  onSyncShapes?: (shapes: Shape[]) => void
   onEditEnd?: (shapes: Shape[]) => void
   setShapes: React.Dispatch<React.SetStateAction<Shape[]>>
 }
@@ -51,7 +49,6 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
   onDuplicateSelectedShape,
   onMoveShape,
   onResizeShape,
-  onSyncShapes,
   onEditEnd,
   setShapes
 }) => {
@@ -68,9 +65,6 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
   const originalSizeRef = useRef<{ width: number; height: number } | null>(null)
   const resizeHandlePositionRef = useRef<ResizeHandlePosition | null>(null)
   const shapesRef = useRef(shapes)
-  const throttledSync = useRef(onSyncShapes ? throttle(onSyncShapes, 300) : undefined).current
-  const throttledMove = useRef(onMoveShape ? throttle(onMoveShape, 300) : undefined).current
-  const throttledResize = useRef(onResizeShape ? throttle(onResizeShape, 300) : undefined).current
 
   // shapes 상태 업데이트
   useEffect(() => {

@@ -254,20 +254,14 @@ const ViewPage: React.FC = () => {
         const userId = 'viewer'
         updateBoardData({ [`shapes/${shapeId}`]: { id: shapeId, deleted: true, updatedAt: Date.now(), updatedBy: userId } })
       }
-    },
-    onCreateShape: (shape: Shape) => {
-      if (isFirebaseAvailable()) {
-        // selected 속성 제거 후 저장
-        const { selected, ...rest } = shape
-        updateBoardData({ [`shapes/${shape.id}`]: rest })
-      }
     }
-  }, {
-    drawDebounceMs: 200,
-    moveThrottleMs: 300,
-    resizeThrottleMs: 300,
-    updateDebounceMs: 300
   }), [strokes])
+
+  // const handleDeleteShape = (shapeId: string) => {
+  //   if (syncCallbacks.onDeleteShape) {
+  //     syncCallbacks.onDeleteShape(shapeId)
+  //   }
+  // }
 
   return (
     <div style={{ 

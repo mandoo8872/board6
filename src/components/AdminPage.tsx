@@ -99,19 +99,7 @@ const AdminPage: React.FC = () => {
         const userId = 'admin'
         updateBoardData({ [`shapes/${shapeId}`]: { id: shapeId, deleted: true, updatedAt: Date.now(), updatedBy: userId } })
       }
-    },
-    onCreateShape: (shape: Shape) => {
-      if (isFirebaseAvailable()) {
-        // selected 속성 제거 후 저장
-        const { selected, ...rest } = shape
-        updateBoardData({ [`shapes/${shape.id}`]: rest })
-      }
     }
-  }, {
-    drawDebounceMs: 200,
-    moveThrottleMs: 300,
-    resizeThrottleMs: 300,
-    updateDebounceMs: 300
   }), [strokes])
 
   const handleToolChange = useCallback((newTool: DrawingTool) => {
@@ -192,7 +180,7 @@ const AdminPage: React.FC = () => {
     const beforeShape = shapes.find(s => s.id === selectedId)
     if (!beforeShape) return
     shapeActions.updateShapeProperty(selectedId, property, value)
-    syncCallbacks.onUpdateShape(selectedId, property, value) // sync로 update
+    syncCallbacks.onUpdateShape?.(selectedId, property, value) // sync로 update
     setTimeout(() => {
       const afterShape = shapes.find(s => s.id === selectedId)
       if (afterShape) {
@@ -205,7 +193,10 @@ const AdminPage: React.FC = () => {
     if (!selectedId) return
     undoRedoActions.recordDeleteShape(selectedId)
     shapeActions.deleteSelectedShape()
-    syncCallbacks.onDeleteShape(selectedId)
+    const onDeleteShape = syncCallbacks?.onDeleteShape
+    if (typeof onDeleteShape === 'function') {
+      onDeleteShape(selectedId)
+    }
   }, [selectedId, undoRedoActions, shapeActions, syncCallbacks])
 
   const handleDuplicateShape = useCallback(() => {
