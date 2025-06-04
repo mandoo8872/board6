@@ -24,6 +24,7 @@ interface InteractionLayerProps {
   onResizeShape?: (shapeId: string, newSize: { width: number; height: number; x?: number; y?: number }) => void
   onEditEnd?: (shapes: Shape[]) => void
   setShapes: React.Dispatch<React.SetStateAction<Shape[]>>
+  isEditingRef?: React.MutableRefObject<boolean>
 }
 
 // resize handle 위치 타입
@@ -50,7 +51,8 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
   onMoveShape,
   onResizeShape,
   onEditEnd,
-  setShapes
+  setShapes,
+  isEditingRef
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const isDrawingRef = useRef(false)
@@ -172,13 +174,16 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
       case 'pen':
         isDrawingRef.current = true
         lastPointRef.current = point
+        if (isEditingRef) isEditingRef.current = true
         onStartStroke(point)
         resetAutoReturnTimer()
         break
 
       case 'eraser':
         isDrawingRef.current = true
+        if (isEditingRef) isEditingRef.current = true
         onEraseAtPoint(point)
+        if (typeof onFinishStroke === 'function') onFinishStroke();
         resetAutoReturnTimer()
         break
 
@@ -222,7 +227,7 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
     }
 
     e.preventDefault()
-  }, [tool, shapes, gridSize, onStartStroke, onEraseAtPoint, onSelectShape, onCreateRect, onToolChange, getCanvasPoint, resetAutoReturnTimer, onMoveShape, hitTestResizeHandle, handleCreationToolAutoRevert])
+  }, [tool, shapes, gridSize, onStartStroke, onEraseAtPoint, onSelectShape, onCreateRect, onToolChange, getCanvasPoint, resetAutoReturnTimer, onMoveShape, hitTestResizeHandle, handleCreationToolAutoRevert, isEditingRef])
 
   // 포인터 이동 이벤트
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
@@ -247,6 +252,7 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
       case 'eraser':
         if (isDrawingRef.current) {
           onEraseAtPoint(point)
+          if (typeof onFinishStroke === 'function') onFinishStroke();
           resetAutoReturnTimer()
         }
         break
@@ -337,6 +343,7 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
         if (isDrawingRef.current) {
           isDrawingRef.current = false
           lastPointRef.current = null
+          if (isEditingRef) isEditingRef.current = false
           onFinishStroke()
           resetAutoReturnTimer()
         }
@@ -345,6 +352,8 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
       case 'eraser':
         if (isDrawingRef.current) {
           isDrawingRef.current = false
+          if (isEditingRef) isEditingRef.current = false
+          if (typeof onFinishStroke === 'function') onFinishStroke();
           resetAutoReturnTimer()
         }
         break
@@ -434,7 +443,7 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
     }
 
     e.preventDefault()
-  }, [tool, onFinishStroke, resetAutoReturnTimer, onMoveShape, gridSize, onEditEnd, getCanvasPoint, onResizeShape])
+  }, [tool, onFinishStroke, resetAutoReturnTimer, onMoveShape, gridSize, onEditEnd, getCanvasPoint, onResizeShape, isEditingRef])
 
   // 키보드 이벤트 처리
   useEffect(() => {

@@ -41,9 +41,10 @@ export const useShapes = ({ shapes, setShapes, selectedId, setSelectedId, gridSi
         isErasable: false
       }
     }
+    setShapes(prev => [...prev, newRect])
     updateBoardData({ [`shapes/${newRect.id}`]: newRect })
     return newRect.id
-  }, [gridSize])
+  }, [gridSize, setShapes])
 
   // 새 텍스트 생성
   const createText = useCallback((point: Point, text: string = 'Text') => {
@@ -76,9 +77,10 @@ export const useShapes = ({ shapes, setShapes, selectedId, setSelectedId, gridSi
         isErasable: false
       }
     }
+    setShapes(prev => [...prev, newText])
     updateBoardData({ [`shapes/${newText.id}`]: newText })
     return newText.id
-  }, [gridSize])
+  }, [gridSize, setShapes])
 
   // 새 이미지 생성
   const createImage = useCallback((point: Point, imageSrc?: string) => {
@@ -108,9 +110,10 @@ export const useShapes = ({ shapes, setShapes, selectedId, setSelectedId, gridSi
         isErasable: false
       }
     }
+    setShapes(prev => [...prev, newImage])
     updateBoardData({ [`shapes/${newImage.id}`]: newImage })
     return newImage.id
-  }, [gridSize])
+  }, [gridSize, setShapes])
 
   // 셰이프 선택 (선택만 로컬에서 관리)
   const selectShape = useCallback((shapeId: string | null) => {
@@ -124,14 +127,16 @@ export const useShapes = ({ shapes, setShapes, selectedId, setSelectedId, gridSi
     if (!shape?.meta?.isDeletable) return
     const userId = (typeof (window as any).userId === 'string' ? (window as any).userId : 'anonymous')
     const now = Date.now()
+    setShapes(prev => prev.filter(s => s.id !== selectedId))
     updateBoardData({ [`shapes/${selectedId}`]: { id: selectedId, deleted: true, updatedAt: now, updatedBy: userId } })
     setSelectedId(null)
-  }, [shapes, selectedId, setSelectedId])
+  }, [shapes, selectedId, setSelectedId, setShapes])
 
   // 셰이프 이동
   const moveShape = useCallback((shapeId: string, newPosition: Point) => {
+    setShapes(prev => prev.map(s => s.id === shapeId ? { ...s, x: newPosition.x, y: newPosition.y } : s))
     updateBoardData({ [`shapes/${shapeId}/x`]: newPosition.x, [`shapes/${shapeId}/y`]: newPosition.y })
-  }, [])
+  }, [setShapes])
 
   // 셰이프 복제
   const duplicateShape = useCallback((shapeId: string) => {
@@ -149,17 +154,16 @@ export const useShapes = ({ shapes, setShapes, selectedId, setSelectedId, gridSi
       updatedAt: now,
       updatedBy: userId
     }
-
     setShapes(prev => [...prev.map(s => ({ ...s, selected: false })), duplicatedShape])
     setSelectedId(duplicatedShape.id)
-    // 동기화(write)
     updateBoardData({ [`shapes/${duplicatedShape.id}`]: { ...duplicatedShape, selected: undefined } })
   }, [shapes, setShapes, setSelectedId])
 
   // 셰이프 속성 업데이트
   const updateShapeProperty = useCallback((shapeId: string, property: keyof Shape, value: any) => {
+    setShapes(prev => prev.map(s => s.id === shapeId ? { ...s, [property]: value } : s))
     updateBoardData({ [`shapes/${shapeId}/${property}`]: value })
-  }, [])
+  }, [setShapes])
 
   // 선택 해제
   const clearSelection = useCallback(() => {
@@ -172,11 +176,10 @@ export const useShapes = ({ shapes, setShapes, selectedId, setSelectedId, gridSi
     setShapes(prev => {
       const shapeIndex = prev.findIndex(s => s.id === shapeId)
       if (shapeIndex === -1 || shapeIndex === prev.length - 1) return prev
-      
       const shape = prev[shapeIndex]
       const newShapes = [...prev]
-      newShapes.splice(shapeIndex, 1) // 기존 위치에서 제거
-      newShapes.push(shape) // 맨 뒤에 추가 (최상단)
+      newShapes.splice(shapeIndex, 1)
+      newShapes.push(shape)
       return newShapes
     })
   }, [setShapes])
@@ -185,11 +188,10 @@ export const useShapes = ({ shapes, setShapes, selectedId, setSelectedId, gridSi
     setShapes(prev => {
       const shapeIndex = prev.findIndex(s => s.id === shapeId)
       if (shapeIndex === -1 || shapeIndex === 0) return prev
-      
       const shape = prev[shapeIndex]
       const newShapes = [...prev]
-      newShapes.splice(shapeIndex, 1) // 기존 위치에서 제거
-      newShapes.unshift(shape) // 맨 앞에 추가 (최하단)
+      newShapes.splice(shapeIndex, 1)
+      newShapes.unshift(shape)
       return newShapes
     })
   }, [setShapes])
@@ -198,9 +200,7 @@ export const useShapes = ({ shapes, setShapes, selectedId, setSelectedId, gridSi
     setShapes(prev => {
       const shapeIndex = prev.findIndex(s => s.id === shapeId)
       if (shapeIndex === -1 || shapeIndex === prev.length - 1) return prev
-      
       const newShapes = [...prev]
-      // 현재와 다음 요소 위치 교환
       const temp = newShapes[shapeIndex]
       newShapes[shapeIndex] = newShapes[shapeIndex + 1]
       newShapes[shapeIndex + 1] = temp
@@ -212,9 +212,7 @@ export const useShapes = ({ shapes, setShapes, selectedId, setSelectedId, gridSi
     setShapes(prev => {
       const shapeIndex = prev.findIndex(s => s.id === shapeId)
       if (shapeIndex === -1 || shapeIndex === 0) return prev
-      
       const newShapes = [...prev]
-      // 현재와 이전 요소 위치 교환
       const temp = newShapes[shapeIndex]
       newShapes[shapeIndex] = newShapes[shapeIndex - 1]
       newShapes[shapeIndex - 1] = temp

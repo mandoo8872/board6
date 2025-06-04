@@ -213,8 +213,11 @@ const AdminPage: React.FC = () => {
   useEffect(() => {
     if (!isFirebaseAvailable()) return
     const unsubscribe = subscribeToSharedBoard((data) => {
-      if (data.shapes) setShapes(prev => mergeLWW(prev, Object.values(data.shapes)))
-      if (data.strokes) setStrokes(prev => mergeLWW(prev, Object.values(data.strokes)))
+      if (data.type === 'shapes') {
+        setShapes(prev => mergeLWW(prev, data.shapes))
+      } else if (data.type === 'strokes') {
+        setStrokes(data.strokes)
+      }
     }, (err) => {
       console.warn('[AdminPage] Firebase 실시간 구독 오류', err)
     })
@@ -296,7 +299,6 @@ const AdminPage: React.FC = () => {
           onToolChange={handleToolChange}
           showGrid={showGrid}
           userId="admin"
-          onDrawEnd={syncCallbacks.onDrawEnd}
           onMoveShape={syncCallbacks.onMoveShape}
           onResizeShape={syncCallbacks.onResizeShape}
         />

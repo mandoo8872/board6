@@ -27,7 +27,6 @@ interface CanvasWrapperProps {
   onCommand?: (command: string) => void
   onToolChange: (tool: DrawingTool) => void
   showGrid?: boolean
-  onDrawEnd?: () => void
   onMoveShape?: (shapeId: string, newPosition: { x: number; y: number }) => void
   onResizeShape?: (shapeId: string, newSize: { width: number; height: number; x?: number; y?: number }) => void
   userId: string
@@ -51,7 +50,6 @@ const CanvasWrapper: React.FC<CanvasWrapperProps> = ({
   onCommand,
   onToolChange,
   showGrid = true,
-  onDrawEnd,
   onMoveShape,
   onResizeShape,
   userId
@@ -342,12 +340,7 @@ const CanvasWrapper: React.FC<CanvasWrapperProps> = ({
         
         {/* Draw Layer: 스트로크 */}
         <DrawLayer
-          tool={tool}
-          penColor={penColor}
-          penSize={penSize}
           strokes={strokes}
-          setStrokes={setStrokes}
-          onDrawEnd={onDrawEnd}
         />
         
         {/* Interaction Layer: 이벤트 처리 */}

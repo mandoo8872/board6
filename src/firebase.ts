@@ -38,22 +38,35 @@ export const subscribeToSharedBoard = (
   onData: (data: any) => void,
   onError?: (err: any) => void
 ): (() => void) => {
-  const boardRef = getSharedBoardRef()
-  const unsubscribe = onValue(boardRef, (snapshot: DataSnapshot) => {
-    const data = snapshot.val()
-    if (data) {
-      console.log('🔄 [firebase.ts] 실시간 데이터 수신', data)
-      onData(data)
-    } else {
-      console.warn('⚠️ [firebase.ts] 빈 데이터 수신')
+  // shapes만 구독
+  const shapesRef = ref(db, '/sharedBoardData/shapes')
+  const strokesRef = ref(db, '/sharedBoardData/strokes')
+
+  const shapesUnsub = onValue(shapesRef, (snapshot) => {
+    const shapes = snapshot.val()
+    if (shapes) {
+      onData({ type: 'shapes', shapes: Object.values(shapes) })
     }
   }, (error) => {
-    console.error('❌ [firebase.ts] 실시간 구독 오류:', error)
+    console.error('❌ [firebase.ts] shapes 실시간 구독 오류:', error)
     if (onError) onError(error)
   })
+
+  const strokesUnsub = onValue(strokesRef, (snapshot) => {
+    const strokes = snapshot.val()
+    if (strokes) {
+      onData({ type: 'strokes', strokes: Object.values(strokes) })
+    }
+  }, (error) => {
+    console.error('❌ [firebase.ts] strokes 실시간 구독 오류:', error)
+    if (onError) onError(error)
+  })
+
   return () => {
-    off(boardRef)
-    unsubscribe()
+    off(shapesRef)
+    off(strokesRef)
+    shapesUnsub()
+    strokesUnsub()
   }
 }
 
@@ -61,10 +74,16 @@ export const subscribeToSharedBoard = (
 export const saveStrokesToFirebase = async (strokes: any[]) => {
   try {
     const strokesRef = ref(db, '/sharedBoardData/strokes')
-    // 배열 -> 객체(Map) 변환
-    const strokesObj = Object.fromEntries(strokes.map((s: any) => [s.id, s]))
+    // 배열 -> 객체 변환 (deleted 속성이 있는 stroke는 제외)
+    const strokesObj = strokes.reduce((acc, stroke) => {
+      if (!stroke.deleted) {  // deleted 속성이 있는 stroke는 저장하지 않음
+        acc[stroke.id] = stroke
+      }
+      return acc
+    }, {} as Record<string, any>)
     console.log('[firebase.ts] 필기 저장 set (객체)', strokesObj)
     await set(strokesRef, strokesObj)
+    console.log('[firebase.ts] 필기 저장 완료')
   } catch (error) {
     console.error('[firebase.ts] 필기 저장 실패:', error)
   }
