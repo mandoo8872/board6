@@ -96,9 +96,25 @@ export const saveStrokesToFirebase = async (strokes: any[], prevStrokes: any[] =
 // 객체 이동/크기조절/속성변경 등 update
 export const updateBoardData = async (patch: any) => {
   try {
+    // TextBox 객체는 전체 저장, 그 외는 patch
+    const newPatch: any = {}
+    for (const key in patch) {
+      if (key.startsWith('shapes/')) {
+        const value = patch[key]
+        if (value && typeof value === 'object' && (value.type === 'text' || value.type === 'textbox')) {
+          // 전체 객체 저장
+          newPatch[key] = value
+        } else {
+          // 기존 patch 방식
+          newPatch[key] = patch[key]
+        }
+      } else {
+        newPatch[key] = patch[key]
+      }
+    }
     const boardRef = getSharedBoardRef()
-    console.log('[firebase.ts] 데이터 update', patch)
-    await update(boardRef, patch)
+    console.log('[firebase.ts] 데이터 update', newPatch)
+    await update(boardRef, newPatch)
   } catch (error) {
     console.error('[firebase.ts] 데이터 update 실패:', error)
   }

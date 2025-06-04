@@ -1,4 +1,4 @@
-**📘 Cursor 전용 개발 사양서 (Board 6 기반)**
+**📘 Cursor 전용 개발 사양서 (Board 6 v1.0 기준)**
 
 ---
 
@@ -16,6 +16,12 @@ Cursor에게 전체 구현 흐름을 "추론 없이" 정확히 따라오게 하�
   * `<canvas id="baseCanvas">` → shape, grid, selectedId 표시 (`zIndex: 1`)
   * `<canvas id="drawCanvas">` → stroke, 지우개 (`zIndex: 2`, 항상 상단)
   * **Interaction은 drawCanvas에서만 발생함**
+
+* **그리드(Grid):**
+
+  * 캔버스에는 항상 표시되며 사용자 설정 없이 기본적으로 활성화됨
+  * `baseCanvas`에서 shape와 함께 렌더링되며, 객체 배치 시 시각적 기준선 제공
+  * **최초 페이지 로드시 그리드 표시가 꺼진 상태(off)가 기본값임**
 
 ```tsx
 <div class="canvas-container">
@@ -48,6 +54,24 @@ Cursor에게 전체 구현 흐름을 "추론 없이" 정확히 따라오게 하�
 | eraser | pointerMove  | drawCanvas | pointerUp      |
 | select | pointerClick | baseCanvas | escape / 전환    |
 | rect   | pointerClick | baseCanvas | 다음 클릭/전환       |
+| text   | pointerClick | baseCanvas | 사이드 패널 편집     |
+
+### 📝 텍스트 박스 처리
+
+* **생성 트리거:**
+  * 도구 선택 후 클릭
+  * Ctrl+V (클립보드 텍스트 존재 시)
+
+* **편집 제한:**
+  * 사이드 패널 전용 편집
+  * 인라인 편집 불가
+  * Delete/Backspace 키 비활성화
+
+* **속성 패널:**
+  * 텍스트 내용 입력
+  * 배경색 선택
+  * 투명도 조절
+  * 정렬 옵션 (수직/수평)
 
 ---
 
@@ -75,7 +99,6 @@ interface CanvasWrapperProps {
 ## 🔐 약속 (절대 위반 금지)
 
 * 절대 tldraw 사용 금지
-* Electron 코드 삽입 금지
 * DOM 직접 접근 금지 (`getElementById`, `document.querySelector` 등 X)
 * drawCanvas와 baseCanvas 외에 `<canvas>` 사용 금지
 * drawCanvas는 stroke 전용, baseCanvas는 shape 전용
@@ -97,7 +120,7 @@ interface CanvasWrapperProps {
 3. Toolbar → onToolChange, onCommand 분리 전달
 4. InteractionLayer → pointer 이벤트 분기 작성
 5. 필기/지우개 타이머 처리 로직 작성
-6. 저장/불러오기, push/pull 로직 추가
+6. Firebase 연동 및 실시간 동기화 구현
 7. 객체 선택 → 선택 시 외곽선 색상, 삭제/복제 적용
 
 ---
@@ -106,22 +129,27 @@ interface CanvasWrapperProps {
 
 ---
 
-## 🔗 연동 및 데이터 흐름 명세 (2025.05)
+## 🔗 연동 및 데이터 흐름 명세 (v1.0)
 
-### 1. Push/Pull 및 실시간 동기화
-- **AdminPage**: useBoardStorage의 pushToFirebase()로 Firebase에 전체 상태 저장(Push)
-- **ViewPage**: subscribeToBoardChanges()로 Firebase의 상태를 실시간 구독(동기화)
-- **localStorage**: Firebase 미사용/오류 시 pushToStorage(), pullFromStorage()로 동작(백업)
+### 1. Firebase 실시간 동기화
+- **AdminPage**: useBoardStorage의 pushToFirebase()로 Firebase에 전체 상태 저장
+- **ViewPage**: subscribeToBoardChanges()로 Firebase의 상태를 실시간 구독
+- **localStorage**: Firebase 미사용/오류 시 pushToStorage(), pullFromStorage()로 동작
+- **동기화 최적화**: debounce/throttle을 통한 이벤트 제어
+- **충돌 해결**: LWW(Last Write Wins) 병합 전략 사용
 
 ### 2. 저장/불러오기
 - useBoardStorage의 saveToFile(), loadFromFile()로 JSON 파일 내보내기/복원
 - localStorage 임시 저장/복원 지원
+- 동기화 콜백을 통한 상태 업데이트 처리
 
 ### 3. 환경변수 및 예외 처리
-- .env/Vercel 환경변수에 Firebase 설정 필요, 없으면 localStorage만 동작
+- .env/Vercel 환경변수에 Firebase 설정 필요
 - 실시간 동기화 실패 시 자동 fallback 및 콘솔/네트워크 로그 확인
+- 동기화 실패 시 자동 재시도 및 에러 처리
 
 ### 4. 주요 prop/이벤트 흐름
-- CanvasWrapper: onPush, onPull prop으로 연동 이벤트 처리 가능
+- CanvasWrapper: onPush, onPull prop으로 연동 이벤트 처리
 - ViewPage: isFirebaseAvailable()로 환경 체크 후 subscribeToBoardChanges() 또는 pullFromStorage() 선택
 - AdminPage: pushToFirebase(), pushToStorage(), saveToFile() 등 명확히 분리 사용
+- 동기화 유틸리티: debounceThrottle.ts와 syncUtils.ts를 통한 이벤트 최적화 및 동기화 처리

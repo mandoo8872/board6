@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { Shape, Point } from '../types'
+import { Shape, Point, TextBox } from '../types'
 import { snapPointToGrid } from '../utils/canvasHelpers'
 import { DEFAULT_SHAPE_WIDTH, DEFAULT_SHAPE_HEIGHT, DEFAULT_FILL_COLOR } from '../utils/constants'
 import { updateBoardData } from '../firebase'
@@ -46,40 +46,35 @@ export const useShapes = ({ shapes, setShapes, selectedId, setSelectedId, gridSi
     return newRect.id
   }, [gridSize, setShapes])
 
-  // 새 텍스트 생성
-  const createText = useCallback((point: Point, text: string = 'Text') => {
+  // 새 텍스트박스 생성 (TextBox 명세 반영)
+  const createText = useCallback((point: Point, content: string = '새 텍스트') => {
     const snappedPoint = snapPointToGrid(point, gridSize)
     const userId = (typeof (window as any).userId === 'string' ? (window as any).userId : 'anonymous')
     const now = Date.now()
-    const newText: Shape = {
+    const newTextBox: TextBox = {
       id: now.toString(),
       type: 'text',
       x: snappedPoint.x,
       y: snappedPoint.y,
-      width: DEFAULT_SHAPE_WIDTH,
-      height: DEFAULT_SHAPE_HEIGHT,
-      text,
-      fontSize: 16,
-      fontWeight: 'normal',
-      fontStyle: 'normal',
-      color: '#000000',
-      selected: true,
-      movable: true,
-      deletable: true,
-      resizable: true,
-      userId,
-      updatedAt: now,
-      updatedBy: userId,
+      width: 150,
+      height: 60,
+      content,
+      backgroundColor: '#888888',
+      opacity: 0.5,
+      textAlign: 'left',
+      verticalAlign: 'top',
       meta: {
         isMovable: true,
         isDeletable: true,
         isResizable: true,
         isErasable: false
-      }
+      },
+      updatedAt: now,
+      updatedBy: userId
     }
-    setShapes(prev => [...prev, newText])
-    updateBoardData({ [`shapes/${newText.id}`]: newText })
-    return newText.id
+    setShapes(prev => [...prev, newTextBox])
+    updateBoardData({ [`shapes/${newTextBox.id}`]: newTextBox })
+    return newTextBox.id
   }, [gridSize, setShapes])
 
   // 새 이미지 생성
@@ -135,8 +130,17 @@ export const useShapes = ({ shapes, setShapes, selectedId, setSelectedId, gridSi
   // 셰이프 이동
   const moveShape = useCallback((shapeId: string, newPosition: Point) => {
     setShapes(prev => prev.map(s => s.id === shapeId ? { ...s, x: newPosition.x, y: newPosition.y } : s))
-    updateBoardData({ [`shapes/${shapeId}/x`]: newPosition.x, [`shapes/${shapeId}/y`]: newPosition.y })
-  }, [setShapes])
+    const shape = shapes.find(s => s.id === shapeId)
+    if (shape) {
+      if (shape.type === 'text' || shape.type === 'textbox') {
+        // 전체 객체 저장
+        updateBoardData({ [`shapes/${shapeId}`]: { ...shape, x: newPosition.x, y: newPosition.y, updatedAt: Date.now() } })
+      } else {
+        // 기존 patch
+        updateBoardData({ [`shapes/${shapeId}/x`]: newPosition.x, [`shapes/${shapeId}/y`]: newPosition.y, [`shapes/${shapeId}/updatedAt`]: Date.now() })
+      }
+    }
+  }, [setShapes, shapes])
 
   // 셰이프 복제
   const duplicateShape = useCallback((shapeId: string) => {
@@ -162,8 +166,17 @@ export const useShapes = ({ shapes, setShapes, selectedId, setSelectedId, gridSi
   // 셰이프 속성 업데이트
   const updateShapeProperty = useCallback((shapeId: string, property: keyof Shape, value: any) => {
     setShapes(prev => prev.map(s => s.id === shapeId ? { ...s, [property]: value } : s))
-    updateBoardData({ [`shapes/${shapeId}/${property}`]: value })
-  }, [setShapes])
+    const shape = shapes.find(s => s.id === shapeId)
+    if (shape) {
+      if (shape.type === 'text' || shape.type === 'textbox') {
+        // 전체 객체 저장
+        updateBoardData({ [`shapes/${shapeId}`]: { ...shape, [property]: value, updatedAt: Date.now() } })
+      } else {
+        // 기존 patch
+        updateBoardData({ [`shapes/${shapeId}/${property}`]: value })
+      }
+    }
+  }, [setShapes, shapes])
 
   // 선택 해제
   const clearSelection = useCallback(() => {

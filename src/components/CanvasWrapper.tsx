@@ -4,10 +4,12 @@ import { useStroke } from '../hooks/useStroke'
 import { useShapes } from '../hooks/useShapes'
 import { useUndoRedo } from '../hooks/useUndoRedo'
 import { useBoardStorage } from '../hooks/useBoardStorage'
+import { useTextBox } from '../hooks/useTextBox'
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from '../utils/constants'
 import BaseLayer from './BaseLayer'
 import DrawLayer from './DrawLayer'
 import InteractionLayer from './InteractionLayer'
+import { TextBoxPanel } from './TextBoxPanel'
 
 interface CanvasWrapperProps {
   tool: DrawingTool
@@ -58,6 +60,7 @@ const CanvasWrapper: React.FC<CanvasWrapperProps> = ({
   const [currentStrokeId, setCurrentStrokeId] = useState<string | null>(null)
   const shapesRef = useRef(shapes)
   const setShapesRef = useRef(setShapes)
+  const { selectedTextBox, createNewTextBox, updateTextBox, deselectTextBox, handlePaste } = useTextBox()
 
   // shapes 상태 업데이트
   useEffect(() => {
@@ -320,6 +323,58 @@ const CanvasWrapper: React.FC<CanvasWrapperProps> = ({
     }
   }, [tool])
 
+  // 텍스트 도구 선택 후 캔버스 클릭 시 텍스트박스 생성
+  const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    console.log('[캔버스 클릭] 현재 tool:', tool)
+    if (tool === 'text') {
+      const rect = (e.target as HTMLDivElement).getBoundingClientRect()
+      const x = e.clientX - rect.left
+      const y = e.clientY - rect.top
+      const newTextBox = createNewTextBox(x, y)
+      console.log('[createTextBox 반환값]', newTextBox)
+      setShapes((prev: Shape[]) => {
+        console.log('[setShapes 추가 전 prev]', prev)
+        const next = [...prev, newTextBox]
+        console.log('[setShapes 추가 후 next]', next)
+        return next
+      })
+      setSelectedId(newTextBox.id)
+    }
+  }
+
+  // Ctrl+V로 텍스트박스 생성
+  const handlePasteEvent = (e: ClipboardEvent) => {
+    if (tool === 'text') {
+      const newTextBox = handlePaste(e as any)
+      if (newTextBox) {
+        setShapes((prev: Shape[]) => [...prev, newTextBox])
+        setSelectedId(newTextBox.id)
+      }
+    }
+  }
+
+  // Delete/Backspace 비활성화 (텍스트박스 선택 시)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (selectedTextBox && (e.key === 'Delete' || e.key === 'Backspace')) {
+        e.preventDefault()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedTextBox])
+
+  useEffect(() => {
+    document.addEventListener('paste', handlePasteEvent)
+    return () => {
+      document.removeEventListener('paste', handlePasteEvent)
+    }
+  }, [tool])
+
+  useEffect(() => {
+    console.log('[툴바] 현재 tool 상태:', tool)
+  }, [tool])
+
   return (
     <div style={{
       position: 'fixed',
@@ -366,6 +421,24 @@ const CanvasWrapper: React.FC<CanvasWrapperProps> = ({
           onResizeShape={handleShapeSync}
           setShapes={setShapes}
         />
+
+        {selectedTextBox && (
+          <div className="side-panel">
+            <TextBoxPanel
+              textBox={selectedTextBox}
+              onUpdate={(updates) => {
+                updateTextBox(updates)
+                setShapes((prev: Shape[]) =>
+                  prev.map((shape: Shape) =>
+                    shape.id === selectedTextBox.id
+                      ? { ...shape, ...updates }
+                      : shape
+                  )
+                )
+              }}
+            />
+          </div>
+        )}
       </div>
     </div>
   )

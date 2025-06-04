@@ -1,4 +1,4 @@
-**📘 Board 6 공유보드 통합 기획서 (2025.05.28 기준)**
+**📘 Board 6 공유보드 통합 기획서 (v1.0 - 2024.06.04 기준)**
 
 ---
 
@@ -7,13 +7,13 @@
 * **목적:**
 
   * 사무실 관리자와 현장 키오스크 간의 정보 공유를 위한 캔버스 기반 공유보드 구축
-  * 실시간 동기화가 아닌, *단방향 저장/불러오기 방식*으로 로컬 동작 우선
-  * Vercel 기반 웹앱으로 배포, 이후 Electron 모듈 분리 가능
+  * Firebase Realtime Database를 통한 실시간 동기화 구현
+  * Vercel 기반 웹앱으로 배포
 
 * **사용자 시나리오:**
 
-  * **관리자(AdminPage):** 객체 생성/배치/편집, JSON 저장/불러오기
-  * **현장 사용자(ViewPage):** 필기/지우개 도구 사용, 도구 제한 UI, 자동 저장/복원
+  * **관리자(AdminPage):** 객체 생성/배치/편집, Firebase Push/Pull, JSON 저장/불러오기
+  * **현장 사용자(ViewPage):** 필기/지우개 도구 사용, 도구 제한 UI, 실시간 동기화
 
 ---
 
@@ -33,7 +33,7 @@
 <canvas ref={drawCanvasRef} style={{ zIndex: 2 }} />
 ```
 
-* **저장 구조:** localStorage + JSON 내보내기/불러오기
+* **저장 구조:** Firebase Realtime Database + localStorage + JSON 내보내기/불러오기
 
 * **해상도 정책:** 고정 해상도 2160 × 3840(px) 세로형 캔버스 기준으로 렌더링하며, ViewCam 개념은 사용하지 않음
 
@@ -56,21 +56,22 @@
 
 ### 3.x 저장 및 동기화 방식
 
+* **Firebase Realtime Database:**
+
+  * 실시간 동기화를 위한 메인 저장소
+  * boards/mainBoard에 전체 상태 저장
+  * 환경변수로 설정 관리
+
 * **Save / Load (저장 및 불러오기):**
 
   * 객체 및 stroke 전체 상태 + 메타 정보를 JSON으로 저장
-  * 사용자는 파일로 저장하거나, 로컬 저장소(localStorage)에 임시 보관 가능
+  * localStorage에 임시 보관 가능
 
 * **Push / Pull (전송 및 수신):**
 
-  * ViewPage <-> AdminPage 간 전송 버튼을 통해 전체 상태 전송
+  * ViewPage <-> AdminPage 간 Firebase를 통한 실시간 동기화
   * Push: 관리자 → 현장에 보드 상태 보내기
   * Pull: 관리자 ← 현장의 현재 보드 상태 불러오기
-
-* **자동 Push/Pull 조건 설정:**
-
-  * 조건: 저장 이후 n초 경과, 특정 도구 종료 시점, 수동 요청 발생 시 등
-  * 향후 설정 화면에서 toggle 및 타이머 주기 설정 가능 (옵션화 예정)
 
 ### 3.0 그리드 및 스냅
 
@@ -78,6 +79,7 @@
 
   * 캔버스에는 항상 표시되며 사용자 설정 없이 기본적으로 활성화됨
   * `baseCanvas`에서 shape와 함께 렌더링되며, 객체 배치 시 시각적 기준선 제공
+  * **최초 페이지 로드시 그리드 표시가 꺼진 상태(off)가 기본값임**
 
 * **그리드 스냅(Grid Snap):**
 
@@ -124,6 +126,28 @@
   * Ctrl+D 또는 Ctrl+C/V로 복제
   * 선택 상태 escape로 해제 가능
 
+### 3.3 텍스트 박스 객체
+
+* **생성 방식:**
+  * 툴바의 텍스트 박스 도구 선택 후 캔버스 클릭
+  * Ctrl+V로 클립보드 텍스트 붙여넣기 시 자동 생성
+  * 초기 속성: 회색 배경(#888888), 50% 투명도, 150x60 크기
+
+* **편집 정책:**
+  * 인라인 편집 불가, 사이드 패널에서만 편집 가능
+  * 텍스트 내용, 배경색, 투명도, 정렬 설정 가능
+  * 텍스트 편집 중 Delete/Backspace 키 비활성화
+
+* **정렬 옵션:**
+  * 수직: 위, 가운데, 아래
+  * 수평: 왼쪽, 가운데, 오른쪽
+  * 워드 스타일 아이콘으로 직관적 UI 제공
+
+* **동기화:**
+  * 다른 객체들과 동일한 저장/복원 구조 사용
+  * UUID 기반 객체 식별
+  * 드래그/이동/크기조절 지원
+
 ---
 
 ## 🧩 4. 기능 상세 프로세스
@@ -169,16 +193,16 @@
 
 ## 🔐 6. 개발 정책 및 제한 사항
 
-* **백엔드 서버 불사용 명시:**
+* **Firebase 연동:**
 
-  * 데이터는 모두 클라이언트 단에서 처리하며, 중앙 서버와의 통신은 없음
-  * JSON 기반의 상태 저장/복원, push/pull은 로컬 또는 P2P 방식으로 처리 예정
+  * Firebase Realtime Database를 통한 실시간 동기화 구현
+  * 환경변수로 설정 관리
+  * 연결 실패 시 localStorage fallback
 
 * **배포 정책:**
 
-  * 우선은 **Vercel 웹앱 기반**으로 개발 및 배포
-  * 모든 기능이 웹에서 **완전하게 동작하고 안정성 검증**되기 전에는 Electron 관련 구현 절대 금지
-  * Electron 패키징은 별도 분리된 후속 단계에서 진행
+  * Vercel 웹앱 기반으로 개발 및 배포
+  * 빌드 스크립트 최적화 및 권한 문제 해결
 
 * **기술 제한 사항:**
 
@@ -188,20 +212,20 @@
 
 ---
 
-## 🔥 7. 보드 연동 및 실시간 동기화 정책 (2025.05 최신)
+## 🔥 7. 보드 연동 및 실시간 동기화 정책 (v1.0)
 
 ### 7.1 연동 구조 개요
-- **관리자(AdminPage)**: 보드 상태를 직접 편집하고, "현장으로 전송(Push)" 시 Firebase Realtime Database에 전체 상태를 저장합니다.
-- **현장(ViewPage)**: Firebase의 보드 상태를 실시간 구독(subscribe)하여, 관리자가 push한 최신 상태를 즉시 반영합니다.
-- **localStorage**: Firebase 연결 실패/오프라인 시 fallback 용도로 사용되며, push/pull 및 자동 저장/복원에 활용됩니다.
+- **관리자(AdminPage)**: 보드 상태를 직접 편집하고, Firebase Realtime Database에 전체 상태를 저장
+- **현장(ViewPage)**: Firebase의 보드 상태를 실시간 구독하여, 관리자가 push한 최신 상태를 즉시 반영
+- **localStorage**: Firebase 연결 실패/오프라인 시 fallback 용도로 사용
 
 ### 7.2 주요 연동 흐름
 - **Push (Admin → View)**: AdminPage에서 pushToFirebase() 호출 → Firebase에 전체 상태 저장 → ViewPage에서 subscribeToBoardChanges()로 실시간 반영
-- **Pull (View → Admin)**: 필요 시 ViewPage의 상태를 pullFromStorage()로 불러와 AdminPage에서 복원 가능(주로 백업/오프라인용)
+- **Pull (View → Admin)**: 필요 시 ViewPage의 상태를 pullFromStorage()로 불러와 AdminPage에서 복원 가능
 - **저장/불러오기**: useBoardStorage 훅을 통해 JSON 파일로 내보내기/불러오기, localStorage 임시 저장 지원
 
 ### 7.3 환경변수 및 예외 처리
-- .env 및 Vercel 환경변수에 Firebase 설정 필요(없으면 localStorage만 동작)
+- .env 및 Vercel 환경변수에 Firebase 설정 필요
 - Firebase 연결 실패 시 자동으로 localStorage fallback
 - 실시간 동기화가 안 될 경우, 콘솔/네트워크 로그 및 환경변수, Firebase 규칙, 배포 상태 점검
 
@@ -212,8 +236,26 @@
 ### 7.5 데이터 구조
 - Firebase boards/mainBoard에 전체 상태(JSON) 저장: shapes, strokes, selectedId, timestamp 등 포함
 
+### 7.6 동기화 최적화
+- **Debounce/Throttle 적용:**
+  * `debounce`: 연속된 이벤트를 그룹화하여 마지막 이벤트만 처리 (예: 스트로크 저장)
+  * `throttle`: 일정 시간 간격으로 이벤트 처리 제한 (예: 실시간 동기화)
+  * `debounceThrottle.ts`에서 유틸리티 함수 제공
+
+- **동기화 유틸리티:**
+  * `syncUtils.ts`에서 동기화 관련 핵심 기능 제공
+  * `createSyncCallbacks`: 동기화 콜백 함수 생성
+  * `syncToFirebase`: Firebase 데이터 업데이트
+  * `syncStrokesToFirebase`: 스트로크 데이터 동기화
+  * `mergeLWW`: Last Write Wins 병합 전략 구현
+
+- **동기화 전략:**
+  * LWW(Last Write Wins) 병합 전략으로 충돌 해결
+  * 타임스탬프 기반 업데이트 순서 결정
+  * 삭제된 객체(tombstone) 처리 포함
+
 ---
 
 ## ✅ 정리
 
-Board 6는 복잡해진 구조를 다시 통합하고, 각 도구/레이어/상태를 명확히 분리하여 안정성을 확보하는 것을 목표로 합니다. 다음 단계로는 컴포넌트 분리와 도구별 전용 처리 모듈 도입이 권장됩니다.
+Board 6 v1.0은 Firebase Realtime Database를 통한 실시간 동기화를 구현하고, 각 도구/레이어/상태를 명확히 분리하여 안정성을 확보했습니다. 다음 단계로는 컴포넌트 분리와 도구별 전용 처리 모듈 도입이 권장됩니다.

@@ -1,4 +1,4 @@
-**📁 Board 6 전용 파일구조 설계 및 Cursor용 명세 (2025.05.28 기준)**
+**📁 Board 6 전용 파일구조 설계 및 Cursor용 명세 (v1.0 - 2025.06.04 기준)**
 
 ---
 
@@ -12,14 +12,21 @@ src/
 │   ├── BaseLayer.tsx            # baseCanvas 전용: 객체, 그리드
 │   ├── Toolbar.tsx              # 도구 선택 UI
 │   ├── PropertiesPanel.tsx      # 우상단 객체 속성 제어 패널
+│   ├── TextBoxPanel.tsx         # 텍스트 박스 전용 속성 패널
 │   └── InteractionLayer.tsx     # pointer 이벤트 핸들링, 도구 전환, 선택 등
 ├── hooks/
 │   ├── useStroke.ts             # stroke 관리 훅 (add/remove 등)
-│   └── useShapes.ts             # shape 선택, 이동, 삭제 등
+│   ├── useShapes.ts             # shape 선택, 이동, 삭제 등
+│   ├── useBoardStorage.ts       # Firebase 연동 및 저장/불러오기 관리
+│   └── useTextBox.ts            # 텍스트 박스 생성 및 편집 관리
 ├── types/
 │   └── index.ts                 # Stroke, Shape, Tool 등 공통 타입 정의
 ├── utils/
 │   ├── canvasHelpers.ts         # drawStroke, drawGrid 등 공통 캔버스 렌더 함수
+│   ├── firebase.ts              # Firebase 설정 및 연동 유틸리티
+│   ├── debounceThrottle.ts      # 이벤트 최적화 유틸리티 (debounce/throttle)
+│   ├── syncUtils.ts             # 동기화 관련 유틸리티 (LWW 병합, 콜백 등)
+│   ├── objectFactory.ts         # 객체 생성 유틸리티 (텍스트 박스 포함)
 │   └── constants.ts             # 해상도, 기본 설정 등
 ├── App.tsx                      # 라우팅 및 진입점
 └── index.tsx                    # React DOM 렌더링
@@ -33,7 +40,6 @@ src/
 
 * props: `tool`, `shapes`, `strokes`, `selectedId`, `penColor`, `penSize`, `gridSize`, `setShapes`, `setStrokes`, `setSelectedId`, `onPush`, `onPull`
 * 역할:
-
   * drawCanvas/baseCanvas DOM 구조 포함
   * 레이어 상태 조정 및 리렌더링 useEffect 분리
   * InteractionLayer 포함 (포인터 이벤트 전달)
@@ -49,7 +55,7 @@ src/
 * baseCanvas 렌더링: grid + shape + selected 상태
 * select, rect 도구에만 렌더링 관련 처리
 
-### 🛠 Toolbar.tsx
+### 🎨 Toolbar.tsx
 
 * 도구 버튼 UI
 * `onToolChange(tool: DrawingTool)` 전달
@@ -64,10 +70,14 @@ src/
 
 * 모든 pointer 이벤트 처리
 * 도구에 따라 이벤트 라우팅
-
   * pen/eraser → DrawLayer 핸들러 호출
   * select/rect → BaseLayer hitTest 및 생성/선택 처리
 * 자동 도구 복귀 타이머 포함 (2초)
+
+### 🕹 TextBoxPanel.tsx
+
+* 텍스트 박스 전용 속성 패널
+* 위치: 우상단 고정, 선택된 객체 있을 때만 렌더링
 
 ---
 
@@ -83,10 +93,22 @@ src/
 * shape 선택, 이동, 삭제, 복제
 * meta 기반 기능 제한 처리 포함 (e.g. isMovable)
 
+### `useBoardStorage.ts`
+
+* Firebase 실시간 동기화 관리
+* localStorage fallback 처리
+* JSON 파일 저장/불러오기
+* debounce/throttle을 통한 동기화 최적화
+* LWW 병합 전략을 통한 충돌 해결
+
+### `useTextBox.ts`
+
+* 텍스트 박스 생성 및 편집 관리
+
 ### `types/index.ts`
 
 ```ts
-export type Tool = 'pen' | 'eraser' | 'select' | 'rect'
+export type Tool = 'pen' | 'eraser' | 'select' | 'rect' | 'text'
 export type CommandTool = 'text' | 'image' | 'undo' | 'redo' | 'grid' | 'settings'
 
 export interface Point { x: number; y: number }
@@ -113,6 +135,15 @@ export interface Shape {
     isErasable?: boolean
   }
 }
+
+export interface TextBox extends Shape {
+  type: 'text'
+  content: string
+  backgroundColor: string
+  opacity: number
+  textAlign: 'left' | 'center' | 'right'
+  verticalAlign: 'top' | 'middle' | 'bottom'
+}
 ```
 
 ---
@@ -124,6 +155,11 @@ export interface Shape {
 * drawCanvas와 baseCanvas는 **항상 동시에 존재**하며, `zIndex`로 구분됨
 * useEffect는 각 상태 변경 (strokes, shapes, selectedId 등)에 따라 개별적으로 처리할 것
 * 타이머, 자동도구복귀는 커스텀 훅으로 빼도 되지만 기능 정확성 최우선
+* Firebase 연동은 useBoardStorage 훅을 통해서만 처리할 것
+* 동기화 시 debounce/throttle을 적절히 사용하여 성능 최적화할 것
+* LWW 병합 전략을 통해 동시성 문제 해결할 것
+* 텍스트 박스는 사이드 패널에서만 편집 가능하도록 제한할 것
+* 클립보드 붙여넣기 시 텍스트 박스 자동 생성 기능 구현할 것
 
 ---
 
@@ -131,3 +167,9 @@ export interface Shape {
 
 💾 저장 버튼 → JSON 파일 다운로드
 📁 불러오기 버튼 → 파일 선택 → 상태 복원
+
+* **그리드(Grid):**
+
+  * 캔버스에는 항상 표시되며 사용자 설정 없이 기본적으로 활성화됨
+  * `baseCanvas`에서 shape와 함께 렌더링되며, 객체 배치 시 시각적 기준선 제공
+  * **최초 페이지 로드시 그리드 표시가 꺼진 상태(off)가 기본값임**

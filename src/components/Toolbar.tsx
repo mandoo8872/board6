@@ -25,34 +25,59 @@ const Toolbar: React.FC<ToolbarProps> = ({
   onPenColorChange,
   penSize,
   onPenSizeChange,
-  showGrid = true,
+  showGrid = false,
   onShowGridChange
 }) => {
   const [showGridDropdown, setShowGridDropdown] = useState(false)
   
   const gridSizeOptions = [16, 40, 64, 100, 128]
 
-  const drawingTools: { command: DrawingTool; label: string; icon: string }[] = [
-    { command: 'select', label: '선택', icon: '👆' },
-    { command: 'pen', label: '펜', icon: '✏️' },
-    { command: 'eraser', label: '지우개', icon: '🧹' },
-    { command: 'rect', label: '사각형', icon: '⬜' }
+  // 2줄로 나눈 그리기 도구 (DrawingTool 타입 사용)
+  const drawingTools: { command: DrawingTool; label: string; icon: string }[][] = [
+    [
+      { command: 'select', label: '선택', icon: '👆' },
+      { command: 'pen', label: '펜', icon: '✏️' },
+      { command: 'eraser', label: '지우개', icon: '🧹' }
+    ],
+    [
+      { command: 'image', label: '이미지', icon: '🖼️' },
+      { command: 'text', label: '텍스트', icon: '🅰️' },
+      { command: 'rect', label: '사각형', icon: '⬜' }
+    ]
   ]
 
   const commandToolsRow1: { command: CommandTool; label: string; icon: string }[] = [
     { command: 'undo', label: '실행취소', icon: '↩️' },
-    { command: 'redo', label: '다시실행', icon: '↪️' },
-    { command: 'image', label: '이미지', icon: '🖼️' }
+    { command: 'redo', label: '다시실행', icon: '↪️' }
   ];
   const commandToolsRow2: { command: CommandTool; label: string; icon: string }[] = [
     { command: 'save', label: '저장', icon: '💾' },
-    { command: 'load', label: '불러오기', icon: '📁' },
-    { command: 'settings', label: '설정', icon: '⚙️' }
+    { command: 'load', label: '불러오기', icon: '📁' }
   ];
-  const commandToolsRow3: { command: CommandTool; label: string; icon: string }[] = [
-    { command: 'push', label: 'Push', icon: '📤' },
-    { command: 'pull', label: 'Pull', icon: '📥' }
-  ];
+
+  // 이미지 도구 클릭 시 파일 선택 및 shape 생성
+  const handleImageToolClick = () => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/*'
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0]
+      if (file) {
+        const reader = new FileReader()
+        reader.onload = (event) => {
+          const imageSrc = event.target?.result as string
+          if (imageSrc) {
+            // 이미지 shape 생성 명령을 Toolbar의 prop으로 전달
+            if (typeof onCommand === 'function') {
+              onCommand('image')
+            }
+          }
+        }
+        reader.readAsDataURL(file)
+      }
+    }
+    input.click()
+  }
 
   return (
     <div style={{
@@ -81,34 +106,37 @@ const Toolbar: React.FC<ToolbarProps> = ({
         {/* 그리기 도구 */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <div style={{ fontSize: '15px', fontWeight: 700, color: '#555', marginBottom: '2px' }}>그리기 도구</div>
-          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-start' }}>
-            {drawingTools.map(({ command, label, icon }) => (
-              <button
-                key={command}
-                onClick={() => onToolChange(command)}
-                style={{
-                  padding: '14px 0 8px 0',
-                  border: currentTool === command ? '2px solid #0066ff' : '1px solid #ccc',
-                  borderRadius: '10px',
-                  backgroundColor: currentTool === command ? '#f0f8ff' : 'white',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '6px',
-                  fontSize: '14px',
-                  minWidth: '54px',
-                  minHeight: '62px',
-                  boxSizing: 'border-box',
-                  fontWeight: 600
-                }}
-                title={label}
-              >
-                <span style={{ fontSize: '24px' }}>{icon}</span>
-                <span>{label}</span>
-              </button>
-            ))}
-          </div>
+          {/* 2줄로 나누어 렌더링 */}
+          {drawingTools.map((row, rowIdx) => (
+            <div key={rowIdx} style={{ display: 'flex', gap: '10px', justifyContent: 'flex-start', marginBottom: rowIdx === 0 ? '6px' : 0 }}>
+              {row.map(({ command, label, icon }) => (
+                <button
+                  key={command}
+                  onClick={command === 'image' ? handleImageToolClick : () => onToolChange(command as DrawingTool)}
+                  style={{
+                    padding: '14px 0 8px 0',
+                    border: currentTool === command ? '2px solid #0066ff' : '1px solid #ccc',
+                    borderRadius: '10px',
+                    backgroundColor: currentTool === command ? '#f0f8ff' : 'white',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '14px',
+                    minWidth: '54px',
+                    minHeight: '62px',
+                    boxSizing: 'border-box',
+                    fontWeight: 600
+                  }}
+                  title={label}
+                >
+                  <span style={{ fontSize: '24px' }}>{icon}</span>
+                  <span>{label}</span>
+                </button>
+              ))}
+            </div>
+          ))}
         </div>
 
         {/* 펜 설정 */}
@@ -183,34 +211,6 @@ const Toolbar: React.FC<ToolbarProps> = ({
             </div>
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-start' }}>
               {commandToolsRow2.map(({ command, label, icon }) => (
-                <button
-                  key={command}
-                  onClick={() => onCommand(command)}
-                  style={{
-                    padding: '12px 0 8px 0',
-                    border: '1.5px solid #ccc',
-                    borderRadius: '10px',
-                    backgroundColor: 'white',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '6px',
-                    fontSize: '14px',
-                    minWidth: '62px',
-                    minHeight: '62px',
-                    boxSizing: 'border-box',
-                    fontWeight: 600
-                  }}
-                  title={label}
-                >
-                  <span style={{ fontSize: '22px' }}>{icon}</span>
-                  <span>{label}</span>
-                </button>
-              ))}
-            </div>
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-start' }}>
-              {commandToolsRow3.map(({ command, label, icon }) => (
                 <button
                   key={command}
                   onClick={() => onCommand(command)}
@@ -361,30 +361,6 @@ const Toolbar: React.FC<ToolbarProps> = ({
                 </div>
               )}
             </div>
-            {/* 설정 버튼 */}
-            <button
-              onClick={() => onCommand('settings')}
-              style={{
-                padding: '12px 0 8px 0',
-                border: '1.5px solid #ccc',
-                borderRadius: '10px',
-                backgroundColor: 'white',
-                cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '14px',
-                minWidth: '62px',
-                minHeight: '62px',
-                boxSizing: 'border-box',
-                fontWeight: 600
-              }}
-              title="설정"
-            >
-              <span style={{ fontSize: '22px' }}>⚙️</span>
-              <span>설정</span>
-            </button>
           </div>
         </div>
       </div>

@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useCallback } from 'react'
 import { DrawingTool, Point, Shape } from '../types'
 import { CANVAS_WIDTH, CANVAS_HEIGHT, AUTO_TOOL_RETURN_DELAY, RESIZE_HANDLE_SIZE } from '../utils/constants'
 import { hitTest, snapPointToGrid } from '../utils/canvasHelpers'
+import { createTextBox } from '../utils/objectFactory'
 
 interface InteractionLayerProps {
   tool: DrawingTool
@@ -224,6 +225,15 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
         const rectId = onCreateRect(snappedPoint)
         handleCreationToolAutoRevert(rectId)
         break
+
+      case 'text': {
+        const snappedPoint = snapPointToGrid(point, gridSize)
+        const newTextBox = createTextBox(snappedPoint.x, snappedPoint.y)
+        setShapes(prev => [...prev, newTextBox])
+        onSelectShape(newTextBox.id)
+        onToolChange('select')
+        break
+      }
     }
 
     e.preventDefault()

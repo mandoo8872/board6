@@ -1,5 +1,5 @@
 export type DrawingTool = 'select' | 'pen' | 'eraser' | 'rect' | 'text' | 'image'
-export type CommandTool = 'undo' | 'redo' | 'save' | 'load' | 'push' | 'pull' | 'settings' | 'image' | 'text'
+export type CommandTool = 'undo' | 'redo' | 'save' | 'load' | 'push' | 'pull' | 'settings' | 'image' | 'text' | 'grid'
 export type ToolbarTool = DrawingTool | CommandTool
 
 export interface Point {
@@ -40,6 +40,15 @@ export interface Shape {
   }
   updatedAt?: number
   updatedBy?: string
+}
+
+export interface TextBox extends Shape {
+  type: 'text'
+  content: string
+  backgroundColor: string
+  opacity: number
+  textAlign: 'left' | 'center' | 'right'
+  verticalAlign: 'top' | 'middle' | 'bottom'
 }
 
 // 보드 상태 타입
