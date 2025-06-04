@@ -173,10 +173,11 @@ const CanvasWrapper: React.FC<CanvasWrapperProps> = ({
       // 완성된 스트로크를 Undo 히스토리에 기록
       undoRedoActions.recordCreateStroke(currentStroke)
     }
-    
+    // 드래그 종료 시점에 DB 동기화
+    strokeActions.saveStrokesOnDrawEnd(strokes)
     setCurrentStroke(null)
     setCurrentStrokeId(null)
-  }, [currentStroke, undoRedoActions])
+  }, [currentStroke, undoRedoActions, strokeActions, strokes])
 
   // 지우개 처리 (Undo 기록 포함)
   const handleEraseAtPoint = useCallback((point: Point) => {

@@ -71,19 +71,23 @@ export const subscribeToSharedBoard = (
 }
 
 // 필기(Stroke) 저장 (onDrawEnd)
-export const saveStrokesToFirebase = async (strokes: any[]) => {
+export const saveStrokesToFirebase = async (strokes: any[], prevStrokes: any[] = []) => {
   try {
-    const strokesRef = ref(db, '/sharedBoardData/strokes')
-    // 배열 -> 객체 변환 (deleted 속성이 있는 stroke는 제외)
-    const strokesObj = strokes.reduce((acc, stroke) => {
-      if (!stroke.deleted) {  // deleted 속성이 있는 stroke는 저장하지 않음
-        acc[stroke.id] = stroke
+    const updates: Record<string, any> = {}
+    const currentIds = new Set(strokes.map((s: any) => s.id))
+    const prevIds = new Set(prevStrokes.map((s: any) => s.id))
+    // 삭제된 id 추적
+    for (const id of prevIds) {
+      if (!currentIds.has(id)) {
+        updates[`/sharedBoardData/strokes/${id}`] = null
       }
-      return acc
-    }, {} as Record<string, any>)
-    console.log('[firebase.ts] 필기 저장 set (객체)', strokesObj)
-    await set(strokesRef, strokesObj)
-    console.log('[firebase.ts] 필기 저장 완료')
+    }
+    // 나머지는 update
+    for (const stroke of strokes) {
+      updates[`/sharedBoardData/strokes/${stroke.id}`] = stroke
+    }
+    await update(ref(db), updates)
+    console.log('[firebase.ts] 필기 저장 update (부분, 삭제 포함)', updates)
   } catch (error) {
     console.error('[firebase.ts] 필기 저장 실패:', error)
   }

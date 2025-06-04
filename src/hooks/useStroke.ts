@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useRef } from 'react'
 import { Stroke, Point, DrawingTool } from '../types'
 import { isFirebaseAvailable, saveStrokesToFirebase } from '../firebase'
 
@@ -9,6 +9,8 @@ interface UseStrokeProps {
 }
 
 export const useStroke = ({ setStrokes, penColor, penSize }: UseStrokeProps) => {
+  const prevStrokesRef = useRef<Stroke[]>([])
+
   // 새 스트로크 시작
   const startStroke = useCallback((point: Point, tool: DrawingTool, userId: string) => {
     const now = Date.now()
@@ -25,7 +27,6 @@ export const useStroke = ({ setStrokes, penColor, penSize }: UseStrokeProps) => 
     }
     setStrokes(prev => {
       const next = [...(Array.isArray(prev) ? prev : []), newStroke]
-      if (isFirebaseAvailable()) saveStrokesToFirebase(next)
       return next
     })
     return newStroke.id
@@ -41,7 +42,6 @@ export const useStroke = ({ setStrokes, penColor, penSize }: UseStrokeProps) => 
               : stroke
           )
         : prev
-      if (isFirebaseAvailable()) saveStrokesToFirebase(next)
       return next
     })
   }, [setStrokes])
@@ -49,8 +49,6 @@ export const useStroke = ({ setStrokes, penColor, penSize }: UseStrokeProps) => 
   // 지우개로 스트로크 삭제 (포인트 기반)
   const eraseAtPoint = useCallback((point: Point, eraseRadius: number = 10) => {
     setStrokes(prev => {
-      console.log('[useStroke] 지우개 사용 전 strokes:', prev)
-      // 지우개로 삭제할 stroke 찾기
       const strokesToErase = prev.filter(stroke => {
         if (!stroke.isErasable) return false
         return stroke.points.some(strokePoint => {
@@ -61,16 +59,7 @@ export const useStroke = ({ setStrokes, penColor, penSize }: UseStrokeProps) => 
           return distance <= eraseRadius
         })
       })
-      console.log('[useStroke] 삭제할 strokes:', strokesToErase)
-
-      // 삭제할 stroke를 제외한 나머지 stroke만 유지
       const next = prev.filter(stroke => !strokesToErase.some(s => s.id === stroke.id))
-      console.log('[useStroke] 지우개 사용 후 strokes:', next)
-
-      if (isFirebaseAvailable()) {
-        console.log('[useStroke] DB에 저장할 strokes:', next)
-        saveStrokesToFirebase(next)
-      }
       return next
     })
   }, [setStrokes])
@@ -78,7 +67,6 @@ export const useStroke = ({ setStrokes, penColor, penSize }: UseStrokeProps) => 
   // 모든 스트로크 삭제
   const clearAllStrokes = useCallback(() => {
     setStrokes(() => {
-      if (isFirebaseAvailable()) saveStrokesToFirebase([])
       return []
     })
   }, [setStrokes])
@@ -87,16 +75,26 @@ export const useStroke = ({ setStrokes, penColor, penSize }: UseStrokeProps) => 
   const removeLastStroke = useCallback(() => {
     setStrokes(prev => {
       const next = prev.slice(0, -1)
-      if (isFirebaseAvailable()) saveStrokesToFirebase(next)
       return next
     })
   }, [setStrokes])
 
+  // 드래그 종료 시점에만 DB 저장 (prevStrokes와 현재 strokes를 함께 전달)
+  const saveStrokesOnDrawEnd = useCallback((strokes: Stroke[]) => {
+    if (isFirebaseAvailable()) {
+      saveStrokesToFirebase(strokes, prevStrokesRef.current)
+      prevStrokesRef.current = strokes
+    }
+  }, [])
+
+  // 외부에서 saveStrokesOnDrawEnd를 사용할 수 있도록 반환
   return {
     startStroke,
     addPointToStroke,
     eraseAtPoint,
     clearAllStrokes,
-    removeLastStroke
+    removeLastStroke,
+    saveStrokesOnDrawEnd,
+    prevStrokesRef
   }
 } 
