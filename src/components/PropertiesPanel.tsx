@@ -133,12 +133,26 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <label style={{ fontSize: '11px', width: '40px' }}>배경:</label>
-              <input
-                type="color"
-                value={selectedShape.fill || '#ffffff'}
-                onChange={(e) => onUpdateShape('fill', e.target.value)}
-                style={{ width: '30px', height: '20px', border: 'none', borderRadius: '3px' }}
-              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input
+                  type="color"
+                  value={selectedShape.fill || '#ffffff'}
+                  onChange={(e) => onUpdateShape('fill', e.target.value)}
+                  style={{ width: '30px', height: '20px', border: 'none', borderRadius: '3px' }}
+                  disabled={selectedShape.meta?.noBackground === true}
+                />
+                <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '11px' }}>
+                  <input
+                    type="checkbox"
+                    checked={selectedShape.meta?.noBackground === true}
+                    onChange={(e) => onUpdateShape('meta', { 
+                      ...selectedShape.meta, 
+                      noBackground: e.target.checked 
+                    })}
+                  />
+                  배경 없음
+                </label>
+              </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <label style={{ fontSize: '11px', width: '40px' }}>투명도:</label>
@@ -147,12 +161,12 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                 min="0"
                 max="1"
                 step="0.1"
-                value={selectedShape.opacity || 1}
+                value={selectedShape.opacity ?? 1}
                 onChange={(e) => onUpdateShape('opacity', parseFloat(e.target.value))}
                 style={{ flex: 1 }}
               />
               <span style={{ fontSize: '11px', minWidth: '30px', textAlign: 'right' }}>
-                {Math.round((selectedShape.opacity || 1) * 100)}%
+                {Math.round((selectedShape.opacity ?? 1) * 100)}%
               </span>
             </div>
           </div>
@@ -201,14 +215,27 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
             
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <label style={{ fontSize: '11px', width: '40px' }}>배경:</label>
-              <input
-                type="color"
-                value={selectedShape.fill || '#ffffff'}
-                onChange={(e) => onUpdateShape('fill', e.target.value)}
-                style={{ width: '30px', height: '20px', border: 'none', borderRadius: '3px' }}
-              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input
+                  type="color"
+                  value={selectedShape.fill || '#ffffff'}
+                  onChange={(e) => onUpdateShape('fill', e.target.value)}
+                  style={{ width: '30px', height: '20px', border: 'none', borderRadius: '3px' }}
+                  disabled={selectedShape.meta?.noBackground === true}
+                />
+                <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '11px' }}>
+                  <input
+                    type="checkbox"
+                    checked={selectedShape.meta?.noBackground === true}
+                    onChange={(e) => onUpdateShape('meta', { 
+                      ...selectedShape.meta, 
+                      noBackground: e.target.checked 
+                    })}
+                  />
+                  배경 없음
+                </label>
+              </div>
             </div>
-
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <label style={{ fontSize: '11px', width: '40px' }}>투명도:</label>
               <input
@@ -216,12 +243,12 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                 min="0"
                 max="1"
                 step="0.1"
-                value={selectedShape.opacity || 1}
+                value={selectedShape.opacity ?? 1}
                 onChange={(e) => onUpdateShape('opacity', parseFloat(e.target.value))}
                 style={{ flex: 1 }}
               />
               <span style={{ fontSize: '11px', minWidth: '30px', textAlign: 'right' }}>
-                {Math.round((selectedShape.opacity || 1) * 100)}%
+                {Math.round((selectedShape.opacity ?? 1) * 100)}%
               </span>
             </div>
             

@@ -40,6 +40,7 @@ export interface Shape {
     isDeletable?: boolean
     isResizable?: boolean
     isErasable?: boolean
+    noBackground?: boolean
   }
   updatedAt?: number
   updatedBy?: string
