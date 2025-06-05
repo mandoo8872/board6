@@ -96,17 +96,20 @@ export const saveStrokesToFirebase = async (strokes: any[], prevStrokes: any[] =
 // 객체 이동/크기조절/속성변경 등 update
 export const updateBoardData = async (patch: any) => {
   try {
-    // TextBox 객체는 전체 저장, 그 외는 patch
+    // 모든 객체의 속성 변경을 동기화
     const newPatch: any = {}
     for (const key in patch) {
       if (key.startsWith('shapes/')) {
+        const shapeId = key.split('/')[1]
+        const property = key.split('/')[2]
         const value = patch[key]
-        if (value && typeof value === 'object' && (value.type === 'text' || value.type === 'textbox')) {
-          // 전체 객체 저장
+        
+        // 전체 객체 업데이트가 필요한 경우
+        if (property === undefined && value && typeof value === 'object') {
           newPatch[key] = value
         } else {
-          // 기존 patch 방식
-          newPatch[key] = patch[key]
+          // 개별 속성 업데이트
+          newPatch[key] = value
         }
       } else {
         newPatch[key] = patch[key]

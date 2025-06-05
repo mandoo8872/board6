@@ -4,9 +4,10 @@ import { TextBox } from '../types'
 interface TextBoxPanelProps {
   textBox: TextBox
   onUpdate: (updates: Partial<TextBox>) => void
+  onResize: (width: number, height: number) => void
 }
 
-export const TextBoxPanel: React.FC<TextBoxPanelProps> = ({ textBox, onUpdate }) => {
+export const TextBoxPanel: React.FC<TextBoxPanelProps> = ({ textBox, onUpdate, onResize }) => {
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     onUpdate({ content: e.target.value })
   }
@@ -27,6 +28,16 @@ export const TextBoxPanel: React.FC<TextBoxPanelProps> = ({ textBox, onUpdate })
     onUpdate({ verticalAlign: align })
   }
 
+  const handleWidthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const width = parseInt(e.target.value)
+    onResize(width, textBox.height || 100)
+  }
+
+  const handleHeightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const height = parseInt(e.target.value)
+    onResize(textBox.width || 200, height)
+  }
+
   return (
     <div className="text-box-panel">
       <div className="panel-section">
@@ -36,6 +47,32 @@ export const TextBoxPanel: React.FC<TextBoxPanelProps> = ({ textBox, onUpdate })
           onChange={handleContentChange}
           rows={3}
         />
+      </div>
+
+      <div className="panel-section">
+        <label>크기</label>
+        <div className="size-controls">
+          <div>
+            <label>너비</label>
+            <input
+              type="number"
+              value={textBox.width || 200}
+              onChange={handleWidthChange}
+              min="50"
+              max="1000"
+            />
+          </div>
+          <div>
+            <label>높이</label>
+            <input
+              type="number"
+              value={textBox.height || 100}
+              onChange={handleHeightChange}
+              min="50"
+              max="1000"
+            />
+          </div>
+        </div>
       </div>
 
       <div className="panel-section">

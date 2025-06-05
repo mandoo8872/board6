@@ -130,14 +130,31 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#666', marginBottom: '5px' }}>
             사각형 설정
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <label style={{ fontSize: '11px', width: '40px' }}>배경:</label>
-            <input
-              type="color"
-              value={selectedShape.fill || '#ffffff'}
-              onChange={(e) => onUpdateShape('fill', e.target.value)}
-              style={{ width: '30px', height: '20px', border: 'none', borderRadius: '3px' }}
-            />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <label style={{ fontSize: '11px', width: '40px' }}>배경:</label>
+              <input
+                type="color"
+                value={selectedShape.fill || '#ffffff'}
+                onChange={(e) => onUpdateShape('fill', e.target.value)}
+                style={{ width: '30px', height: '20px', border: 'none', borderRadius: '3px' }}
+              />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <label style={{ fontSize: '11px', width: '40px' }}>투명도:</label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.1"
+                value={selectedShape.opacity || 1}
+                onChange={(e) => onUpdateShape('opacity', parseFloat(e.target.value))}
+                style={{ flex: 1 }}
+              />
+              <span style={{ fontSize: '11px', minWidth: '30px', textAlign: 'right' }}>
+                {Math.round((selectedShape.opacity || 1) * 100)}%
+              </span>
+            </div>
           </div>
         </div>
       )}
@@ -147,7 +164,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#666', marginBottom: '5px' }}>
             텍스트 설정
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <label style={{ fontSize: '11px', width: '40px' }}>내용:</label>
               <input
@@ -183,6 +200,32 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
             </div>
             
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <label style={{ fontSize: '11px', width: '40px' }}>배경:</label>
+              <input
+                type="color"
+                value={selectedShape.fill || '#ffffff'}
+                onChange={(e) => onUpdateShape('fill', e.target.value)}
+                style={{ width: '30px', height: '20px', border: 'none', borderRadius: '3px' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <label style={{ fontSize: '11px', width: '40px' }}>투명도:</label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.1"
+                value={selectedShape.opacity || 1}
+                onChange={(e) => onUpdateShape('opacity', parseFloat(e.target.value))}
+                style={{ flex: 1 }}
+              />
+              <span style={{ fontSize: '11px', minWidth: '30px', textAlign: 'right' }}>
+                {Math.round((selectedShape.opacity || 1) * 100)}%
+              </span>
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <label style={{ fontSize: '11px', width: '40px' }}>스타일:</label>
               <div style={{ display: 'flex', gap: '5px' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '11px' }}>
@@ -203,18 +246,126 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                 </label>
               </div>
             </div>
-            
-            {selectedShape.fill !== undefined && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <label style={{ fontSize: '11px', width: '40px' }}>배경:</label>
-                <input
-                  type="color"
-                  value={selectedShape.fill || '#ffffff'}
-                  onChange={(e) => onUpdateShape('fill', e.target.value)}
-                  style={{ width: '30px', height: '20px', border: 'none', borderRadius: '3px' }}
-                />
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label style={{ fontSize: '11px' }}>텍스트 정렬</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {/* 수평 정렬 */}
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  <button
+                    onClick={() => onUpdateShape('textAlign', 'left')}
+                    style={{
+                      width: '24px',
+                      height: '24px',
+                      padding: '2px',
+                      border: '1px solid #ccc',
+                      borderRadius: '3px',
+                      backgroundColor: selectedShape.textAlign === 'left' ? '#e3e3e3' : 'white',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                    title="왼쪽 정렬"
+                  >
+                    <span style={{ fontSize: '14px' }}>⇤</span>
+                  </button>
+                  <button
+                    onClick={() => onUpdateShape('textAlign', 'center')}
+                    style={{
+                      width: '24px',
+                      height: '24px',
+                      padding: '2px',
+                      border: '1px solid #ccc',
+                      borderRadius: '3px',
+                      backgroundColor: selectedShape.textAlign === 'center' ? '#e3e3e3' : 'white',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                    title="가운데 정렬"
+                  >
+                    <span style={{ fontSize: '14px' }}>⇔</span>
+                  </button>
+                  <button
+                    onClick={() => onUpdateShape('textAlign', 'right')}
+                    style={{
+                      width: '24px',
+                      height: '24px',
+                      padding: '2px',
+                      border: '1px solid #ccc',
+                      borderRadius: '3px',
+                      backgroundColor: selectedShape.textAlign === 'right' ? '#e3e3e3' : 'white',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                    title="오른쪽 정렬"
+                  >
+                    <span style={{ fontSize: '14px' }}>⇥</span>
+                  </button>
+                </div>
+                {/* 수직 정렬 */}
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  <button
+                    onClick={() => onUpdateShape('verticalAlign', 'top')}
+                    style={{
+                      width: '24px',
+                      height: '24px',
+                      padding: '2px',
+                      border: '1px solid #ccc',
+                      borderRadius: '3px',
+                      backgroundColor: selectedShape.verticalAlign === 'top' ? '#e3e3e3' : 'white',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                    title="위 정렬"
+                  >
+                    <span style={{ fontSize: '14px' }}>⇧</span>
+                  </button>
+                  <button
+                    onClick={() => onUpdateShape('verticalAlign', 'middle')}
+                    style={{
+                      width: '24px',
+                      height: '24px',
+                      padding: '2px',
+                      border: '1px solid #ccc',
+                      borderRadius: '3px',
+                      backgroundColor: selectedShape.verticalAlign === 'middle' ? '#e3e3e3' : 'white',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                    title="중앙 정렬"
+                  >
+                    <span style={{ fontSize: '14px' }}>⇕</span>
+                  </button>
+                  <button
+                    onClick={() => onUpdateShape('verticalAlign', 'bottom')}
+                    style={{
+                      width: '24px',
+                      height: '24px',
+                      padding: '2px',
+                      border: '1px solid #ccc',
+                      borderRadius: '3px',
+                      backgroundColor: selectedShape.verticalAlign === 'bottom' ? '#e3e3e3' : 'white',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                    title="아래 정렬"
+                  >
+                    <span style={{ fontSize: '14px' }}>⇩</span>
+                  </button>
+                </div>
               </div>
-            )}
+            </div>
           </div>
         </div>
       )}

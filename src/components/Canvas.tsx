@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react'
 import { useTextBox } from '../hooks/useTextBox'
 import { TextBoxPanel } from './TextBoxPanel'
-import { Shape, DrawingTool } from '../types'
+import { Shape, DrawingTool, TextBox } from '../types'
 import '../styles/TextBoxPanel.css'
 
 interface CanvasProps {
@@ -34,9 +34,19 @@ export const Canvas: React.FC<CanvasProps> = ({
   onPull
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const { selectedTextBox, createNewTextBox, updateTextBox, deselectTextBox, handlePaste } = useTextBox()
+  const { 
+    selectedTextBox, 
+    isEditing,
+    createNewTextBox, 
+    updateTextBox, 
+    deselectTextBox, 
+    handlePaste,
+    handleTextBoxClick,
+    handleCanvasClick,
+    handleTextBoxResize
+  } = useTextBox()
 
-  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handleCanvasClickEvent = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (tool === 'text') {
       const rect = canvasRef.current?.getBoundingClientRect()
       if (rect) {
@@ -46,6 +56,7 @@ export const Canvas: React.FC<CanvasProps> = ({
         setShapes((prev: Shape[]) => [...prev, newTextBox])
       }
     }
+    handleCanvasClick(e)
   }
 
   const handlePasteEvent = (e: ClipboardEvent) => {
@@ -55,6 +66,22 @@ export const Canvas: React.FC<CanvasProps> = ({
         setShapes((prev: Shape[]) => [...prev, newTextBox])
       }
     }
+  }
+
+  const handleTextBoxSelect = (textBox: TextBox) => {
+    handleTextBoxClick(textBox)
+    setSelectedId(textBox.id)
+  }
+
+  const handleTextBoxUpdate = (updates: Partial<TextBox>) => {
+    updateTextBox(updates)
+    setShapes((prev: Shape[]) =>
+      prev.map((shape: Shape) =>
+        shape.id === selectedTextBox?.id
+          ? { ...shape, ...updates }
+          : shape
+      )
+    )
   }
 
   useEffect(() => {
@@ -68,23 +95,15 @@ export const Canvas: React.FC<CanvasProps> = ({
     <div className="canvas-container">
       <canvas
         ref={canvasRef}
-        onClick={handleCanvasClick}
+        onClick={handleCanvasClickEvent}
         // ... existing canvas props ...
       />
-      {selectedTextBox && (
+      {selectedTextBox && isEditing && (
         <div className="side-panel">
           <TextBoxPanel
             textBox={selectedTextBox}
-            onUpdate={(updates) => {
-              updateTextBox(updates)
-              setShapes((prev: Shape[]) =>
-                prev.map((shape: Shape) =>
-                  shape.id === selectedTextBox.id
-                    ? { ...shape, ...updates }
-                    : shape
-                )
-              )
-            }}
+            onUpdate={handleTextBoxUpdate}
+            onResize={handleTextBoxResize}
           />
         </div>
       )}

@@ -30,8 +30,11 @@ export interface Shape {
   fontSize?: number
   fontWeight?: 'normal' | 'bold'
   fontStyle?: 'normal' | 'italic'
+  textAlign?: 'left' | 'center' | 'right'
+  verticalAlign?: 'top' | 'middle' | 'bottom'
   imageSrc?: string
   selected?: boolean
+  opacity?: number
   meta?: {
     isMovable?: boolean
     isDeletable?: boolean
