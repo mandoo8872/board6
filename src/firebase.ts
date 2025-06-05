@@ -2,22 +2,19 @@
 import { initializeApp } from 'firebase/app'
 import { getDatabase, ref, onValue, set, update, off, DatabaseReference, DataSnapshot } from 'firebase/database'
 
-// 환경변수 기반 설정
+// ⚠️ 아카이브 브랜치: Firebase 설정이 제거되었습니다
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+  apiKey: "ARCHIVED_DO_NOT_USE",
+  authDomain: "ARCHIVED_DO_NOT_USE",
+  databaseURL: "ARCHIVED_DO_NOT_USE",
+  projectId: "ARCHIVED_DO_NOT_USE",
+  storageBucket: "ARCHIVED_DO_NOT_USE",
+  messagingSenderId: "ARCHIVED_DO_NOT_USE",
+  appId: "ARCHIVED_DO_NOT_USE"
 }
 
 const app = initializeApp(firebaseConfig)
-const db = getDatabase(app)
-
-export { db }
+export const db = getDatabase(app)
 
 // Firebase 사용 가능 여부 확인
 export const isFirebaseAvailable = (): boolean => {
