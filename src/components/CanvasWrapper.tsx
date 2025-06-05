@@ -91,6 +91,28 @@ const CanvasWrapper: React.FC<CanvasWrapperProps> = ({
     }
   }, [onMoveShape, onResizeShape])
 
+  // 색상/투명도 변경 완료 시 Firebase 업데이트
+  const handleShapeUpdateComplete = useCallback((updates: Partial<Shape>) => {
+    if (!updates.id) return
+
+    // 로컬 상태 업데이트
+    setShapes(prev => prev.map(shape =>
+      shape.id === updates.id ? { ...shape, ...updates } : shape
+    ))
+
+    // Firebase 업데이트
+    if (onMoveShape) {
+      const shape = shapes.find(s => s.id === updates.id)
+      if (shape) {
+        onMoveShape(updates.id, {
+          x: shape.x,
+          y: shape.y,
+          ...updates
+        })
+      }
+    }
+  }, [onMoveShape, setShapes, shapes])
+
   // Undo/Redo 훅
   const undoRedoActions = useUndoRedo({
     shapes,
@@ -436,6 +458,7 @@ const CanvasWrapper: React.FC<CanvasWrapperProps> = ({
                   )
                 )
               }}
+              onUpdateComplete={handleShapeUpdateComplete}
             />
           </div>
         )}

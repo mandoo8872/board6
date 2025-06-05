@@ -1,23 +1,55 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { TextBox } from '../types'
 
 interface TextBoxPanelProps {
   textBox: TextBox
   onUpdate: (updates: Partial<TextBox>) => void
-  onResize: (width: number, height: number) => void
+  onUpdateComplete: (updates: Partial<TextBox>) => void
+  onResize?: (width: number, height: number) => void
 }
 
-export const TextBoxPanel: React.FC<TextBoxPanelProps> = ({ textBox, onUpdate, onResize }) => {
+export const TextBoxPanel: React.FC<TextBoxPanelProps> = ({
+  textBox,
+  onUpdate,
+  onUpdateComplete,
+  onResize
+}) => {
+  const [localFill, setLocalFill] = useState<string>(textBox.fill || '#ffffff')
+  const [localOpacity, setLocalOpacity] = useState<number>(textBox.opacity ?? 1)
+
+  useEffect(() => {
+    setLocalFill(textBox.fill || '#ffffff')
+    setLocalOpacity(textBox.opacity ?? 1)
+  }, [textBox])
+
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     onUpdate({ content: e.target.value })
   }
 
-  const handleBackgroundColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onUpdate({ backgroundColor: e.target.value })
+  const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newColor = e.target.value
+    setLocalFill(newColor)
+    onUpdate({ fill: newColor })
+  }
+
+  const handleColorComplete = () => {
+    onUpdateComplete({
+      ...textBox,
+      fill: localFill
+    })
   }
 
   const handleOpacityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onUpdate({ opacity: parseFloat(e.target.value) })
+    const newOpacity = parseFloat(e.target.value)
+    setLocalOpacity(newOpacity)
+    onUpdate({ opacity: newOpacity })
+  }
+
+  const handleOpacityComplete = () => {
+    onUpdateComplete({
+      ...textBox,
+      opacity: localOpacity
+    })
   }
 
   const handleTextAlignChange = (align: 'left' | 'center' | 'right') => {
@@ -30,12 +62,12 @@ export const TextBoxPanel: React.FC<TextBoxPanelProps> = ({ textBox, onUpdate, o
 
   const handleWidthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const width = parseInt(e.target.value)
-    onResize(width, textBox.height || 100)
+    onResize?.(width, textBox.height || 100)
   }
 
   const handleHeightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const height = parseInt(e.target.value)
-    onResize(textBox.width || 200, height)
+    onResize?.(textBox.width || 200, height)
   }
 
   return (
@@ -77,24 +109,45 @@ export const TextBoxPanel: React.FC<TextBoxPanelProps> = ({ textBox, onUpdate, o
 
       <div className="panel-section">
         <label>배경색</label>
-        <input
-          type="color"
-          value={textBox.backgroundColor ?? '#888888'}
-          onChange={handleBackgroundColorChange}
-        />
+        <div className="color-input-group">
+          <input
+            type="color"
+            value={localFill}
+            onChange={handleColorChange}
+            onMouseUp={handleColorComplete}
+            onBlur={handleColorComplete}
+          />
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={textBox.meta?.noBackground === true}
+              onChange={(e) => onUpdate({ 
+                meta: { 
+                  ...textBox.meta, 
+                  noBackground: e.target.checked 
+                } 
+              })}
+            />
+            배경 없음
+          </label>
+        </div>
       </div>
 
       <div className="panel-section">
         <label>투명도</label>
-        <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.1"
-          value={typeof textBox.opacity === 'number' && !isNaN(textBox.opacity) ? textBox.opacity : 0.5}
-          onChange={handleOpacityChange}
-        />
-        <span>{Math.round((typeof textBox.opacity === 'number' && !isNaN(textBox.opacity) ? textBox.opacity : 0.5) * 100)}%</span>
+        <div className="opacity-control">
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.1"
+            value={localOpacity}
+            onChange={handleOpacityChange}
+            onMouseUp={handleOpacityComplete}
+            onBlur={handleOpacityComplete}
+          />
+          <span>{Math.round(localOpacity * 100)}%</span>
+        </div>
       </div>
 
       <div className="panel-section">

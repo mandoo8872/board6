@@ -1,9 +1,10 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Shape } from '../types'
 
 interface PropertiesPanelProps {
   selectedShape: Shape | null
   onUpdateShape: (property: keyof Shape, value: any) => void
+  onUpdateShapeComplete: (updates: Partial<Shape>) => void
   onDeleteShape: () => void
   onDuplicateShape: () => void
   onBringToFront?: (shapeId: string) => void
@@ -15,6 +16,7 @@ interface PropertiesPanelProps {
 const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   selectedShape,
   onUpdateShape,
+  onUpdateShapeComplete,
   onDeleteShape,
   onDuplicateShape,
   onBringToFront,
@@ -22,7 +24,44 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   onMoveForward,
   onMoveBackward
 }) => {
+  const [localFill, setLocalFill] = useState<string>('#ffffff')
+  const [localOpacity, setLocalOpacity] = useState<number>(1)
+
+  // 선택된 객체가 변경될 때 로컬 상태 초기화
+  useEffect(() => {
+    if (selectedShape) {
+      setLocalFill(selectedShape.fill || '#ffffff')
+      setLocalOpacity(selectedShape.opacity ?? 1)
+    }
+  }, [selectedShape])
+
   if (!selectedShape) return null
+
+  const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newColor = e.target.value
+    setLocalFill(newColor)
+    onUpdateShape('fill', newColor)
+  }
+
+  const handleColorComplete = () => {
+    onUpdateShapeComplete({
+      ...selectedShape,
+      fill: localFill
+    })
+  }
+
+  const handleOpacityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newOpacity = parseFloat(e.target.value)
+    setLocalOpacity(newOpacity)
+    onUpdateShape('opacity', newOpacity)
+  }
+
+  const handleOpacityComplete = () => {
+    onUpdateShapeComplete({
+      ...selectedShape,
+      opacity: localOpacity
+    })
+  }
 
   return (
     <div style={{
@@ -136,8 +175,10 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <input
                   type="color"
-                  value={selectedShape.fill || '#ffffff'}
-                  onChange={(e) => onUpdateShape('fill', e.target.value)}
+                  value={localFill}
+                  onChange={handleColorChange}
+                  onMouseUp={handleColorComplete}
+                  onBlur={handleColorComplete}
                   style={{ width: '30px', height: '20px', border: 'none', borderRadius: '3px' }}
                   disabled={selectedShape.meta?.noBackground === true}
                 />
@@ -161,12 +202,14 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                 min="0"
                 max="1"
                 step="0.1"
-                value={selectedShape.opacity ?? 1}
-                onChange={(e) => onUpdateShape('opacity', parseFloat(e.target.value))}
+                value={localOpacity}
+                onChange={handleOpacityChange}
+                onMouseUp={handleOpacityComplete}
+                onBlur={handleOpacityComplete}
                 style={{ flex: 1 }}
               />
               <span style={{ fontSize: '11px', minWidth: '30px', textAlign: 'right' }}>
-                {Math.round((selectedShape.opacity ?? 1) * 100)}%
+                {Math.round(localOpacity * 100)}%
               </span>
             </div>
           </div>
@@ -218,8 +261,10 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <input
                   type="color"
-                  value={selectedShape.fill || '#ffffff'}
-                  onChange={(e) => onUpdateShape('fill', e.target.value)}
+                  value={localFill}
+                  onChange={handleColorChange}
+                  onMouseUp={handleColorComplete}
+                  onBlur={handleColorComplete}
                   style={{ width: '30px', height: '20px', border: 'none', borderRadius: '3px' }}
                   disabled={selectedShape.meta?.noBackground === true}
                 />
@@ -243,12 +288,14 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                 min="0"
                 max="1"
                 step="0.1"
-                value={selectedShape.opacity ?? 1}
-                onChange={(e) => onUpdateShape('opacity', parseFloat(e.target.value))}
+                value={localOpacity}
+                onChange={handleOpacityChange}
+                onMouseUp={handleOpacityComplete}
+                onBlur={handleOpacityComplete}
                 style={{ flex: 1 }}
               />
               <span style={{ fontSize: '11px', minWidth: '30px', textAlign: 'right' }}>
-                {Math.round((selectedShape.opacity ?? 1) * 100)}%
+                {Math.round(localOpacity * 100)}%
               </span>
             </div>
             
