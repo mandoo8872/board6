@@ -220,45 +220,73 @@ const ViewPage: React.FC = () => {
     onMoveShape: (shapeId: string, newPosition: { x: number; y: number }) => {
       if (isFirebaseAvailable()) {
         const userId = 'viewer'
+        const shape = shapes.find(s => s.id === shapeId)
+        if (shape) {
         updateBoardData({
-          [`shapes/${shapeId}/x`]: newPosition.x,
-          [`shapes/${shapeId}/y`]: newPosition.y,
-          [`shapes/${shapeId}/updatedAt`]: Date.now(),
-          [`shapes/${shapeId}/updatedBy`]: userId
+            [`shapes/${shapeId}`]: {
+              ...shape,
+              x: newPosition.x,
+              y: newPosition.y,
+              updatedAt: Date.now(),
+              updatedBy: userId
+            }
         })
+        }
       }
     },
     onResizeShape: (shapeId: string, newSize: { width: number; height: number; x?: number; y?: number }) => {
       if (isFirebaseAvailable()) {
         const userId = 'viewer'
+        const shape = shapes.find(s => s.id === shapeId)
+        if (shape) {
         updateBoardData({
-          [`shapes/${shapeId}/width`]: newSize.width,
-          [`shapes/${shapeId}/height`]: newSize.height,
-          ...(newSize.x !== undefined ? { [`shapes/${shapeId}/x`]: newSize.x } : {}),
-          ...(newSize.y !== undefined ? { [`shapes/${shapeId}/y`]: newSize.y } : {}),
-          [`shapes/${shapeId}/updatedAt`]: Date.now(),
-          [`shapes/${shapeId}/updatedBy`]: userId
+            [`shapes/${shapeId}`]: {
+              ...shape,
+              width: newSize.width,
+              height: newSize.height,
+              ...(newSize.x !== undefined ? { x: newSize.x } : {}),
+              ...(newSize.y !== undefined ? { y: newSize.y } : {}),
+              updatedAt: Date.now(),
+              updatedBy: userId
+            }
         })
+        }
       }
     },
     onUpdateShape: (shapeId: string, property: keyof Shape, value: any) => {
       if (isFirebaseAvailable()) {
         if (property === 'selected') return // selected는 동기화하지 않음
         const userId = 'viewer'
+        const shape = shapes.find(s => s.id === shapeId)
+        if (shape) {
         updateBoardData({
-          [`shapes/${shapeId}/${property}`]: value,
-          [`shapes/${shapeId}/updatedAt`]: Date.now(),
-          [`shapes/${shapeId}/updatedBy`]: userId
+            [`shapes/${shapeId}`]: {
+              ...shape,
+              [property]: value,
+              updatedAt: Date.now(),
+              updatedBy: userId
+            }
         })
+        }
       }
     },
     onDeleteShape: (shapeId: string) => {
       if (isFirebaseAvailable()) {
         const userId = 'viewer'
-        updateBoardData({ [`shapes/${shapeId}`]: { id: shapeId, deleted: true, updatedAt: Date.now(), updatedBy: userId } })
+        const shape = shapes.find(s => s.id === shapeId)
+        if (shape) {
+          updateBoardData({
+            [`shapes/${shapeId}`]: {
+              ...shape,
+              deleted: true,
+              updatedAt: Date.now(),
+              updatedBy: userId
+            }
+          })
+        }
       }
     }
-  }), [strokes])
+  }), [strokes, shapes])
 
   // const handleDeleteShape = (shapeId: string) => {
   //   if (syncCallbacks.onDeleteShape) {

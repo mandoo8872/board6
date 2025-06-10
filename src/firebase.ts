@@ -101,23 +101,16 @@ export const updateBoardData = async (patch: any) => {
     for (const key in patch) {
       if (key.startsWith('shapes/')) {
         const shapeId = key.split('/')[1]
-        const property = key.split('/')[2]
-        const value = patch[key]
-        
-        // 전체 객체 업데이트가 필요한 경우
-        if (property === undefined && value && typeof value === 'object') {
-          newPatch[key] = value
-        } else {
-          // 개별 속성 업데이트
-          newPatch[key] = value
+        // 전체 객체 업데이트 방식으로 변경
+        if (patch[key] && typeof patch[key] === 'object') {
+          newPatch[`/sharedBoardData/shapes/${shapeId}`] = patch[key]
         }
       } else {
-        newPatch[key] = patch[key]
+        newPatch[`/sharedBoardData/${key}`] = patch[key]
       }
     }
-    const boardRef = getSharedBoardRef()
     console.log('[firebase.ts] 데이터 update', newPatch)
-    await update(boardRef, newPatch)
+    await update(ref(db), newPatch)
   } catch (error) {
     console.error('[firebase.ts] 데이터 update 실패:', error)
   }

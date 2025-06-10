@@ -33,7 +33,7 @@ const DrawLayer: React.FC<DrawLayerProps> = ({
         left: 0,
         zIndex: 2,
         pointerEvents: 'auto',
-        touchAction: 'none'
+        touchAction: 'manipulation'
       }}
     />
   )

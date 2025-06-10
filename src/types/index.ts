@@ -20,39 +20,32 @@ export interface Stroke {
 
 export interface Shape {
   id: string
-  type: 'rect' | 'text' | 'image'
+  type: 'rect' | 'image' | 'textbox'
   x: number
   y: number
   width?: number
   height?: number
   fill?: string
-  text?: string
-  fontSize?: number
-  fontWeight?: 'normal' | 'bold'
-  fontStyle?: 'normal' | 'italic'
+  opacity?: number
+  rotation?: number
+  zIndex?: number
+  selected?: boolean
+  content?: string
   textAlign?: 'left' | 'center' | 'right'
   verticalAlign?: 'top' | 'middle' | 'bottom'
-  imageSrc?: string
-  selected?: boolean
-  opacity?: number
+  src?: string
   meta?: {
     isMovable?: boolean
     isDeletable?: boolean
     isResizable?: boolean
     isErasable?: boolean
     noBackground?: boolean
+    fontSize?: number
+    fontWeight?: 'normal' | 'bold'
+    fontStyle?: 'normal' | 'italic'
   }
   updatedAt?: number
   updatedBy?: string
-}
-
-export interface TextBox extends Shape {
-  type: 'text'
-  content: string
-  backgroundColor: string
-  opacity: number
-  textAlign: 'left' | 'center' | 'right'
-  verticalAlign: 'top' | 'middle' | 'bottom'
 }
 
 // 보드 상태 타입

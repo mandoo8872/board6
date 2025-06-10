@@ -63,6 +63,29 @@ const BaseLayer: React.FC<BaseLayerProps> = ({
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
+    // 이미지 로드 이벤트 리스너 추가
+    const handleImageLoaded = () => {
+      drawAllShapes(ctx, shapes)
+    }
+
+    canvas.addEventListener('imageLoaded', handleImageLoaded)
+
+    // 초기 렌더링
+    drawAllShapes(ctx, shapes)
+
+    return () => {
+      canvas.removeEventListener('imageLoaded', handleImageLoaded)
+    }
+  }, [shapes])
+
+  // 그리드와 셰이프 렌더링
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
     // 캔버스 초기화
     clearCanvas(ctx)
 

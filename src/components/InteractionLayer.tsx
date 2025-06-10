@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useCallback } from 'react'
+import React, { useRef, useEffect, useCallback, useState } from 'react'
 import { DrawingTool, Point, Shape } from '../types'
 import { CANVAS_WIDTH, CANVAS_HEIGHT, AUTO_TOOL_RETURN_DELAY, RESIZE_HANDLE_SIZE } from '../utils/constants'
 import { hitTest, snapPointToGrid } from '../utils/canvasHelpers'
@@ -68,6 +68,7 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
   const originalSizeRef = useRef<{ width: number; height: number } | null>(null)
   const resizeHandlePositionRef = useRef<ResizeHandlePosition | null>(null)
   const shapesRef = useRef(shapes)
+  const [isImageUploading, setIsImageUploading] = useState(false)
 
   // shapes 상태 업데이트
   useEffect(() => {
@@ -169,7 +170,17 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
 
   // 포인터 다운 이벤트
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    // 터치 이벤트인 경우 preventDefault 호출
+    if (e.pointerType === 'touch') {
+      e.preventDefault()
+    }
+
     const point = getCanvasPoint(e.clientX, e.clientY)
+    
+    // 이미지 도구일 때는 아무 동작도 하지 않음
+    if (tool === 'image') {
+      return
+    }
 
     switch (tool) {
       case 'pen':
@@ -235,12 +246,15 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
         break
       }
     }
-
-    e.preventDefault()
   }, [tool, shapes, gridSize, onStartStroke, onEraseAtPoint, onSelectShape, onCreateRect, onToolChange, getCanvasPoint, resetAutoReturnTimer, onMoveShape, hitTestResizeHandle, handleCreationToolAutoRevert, isEditingRef])
 
   // 포인터 이동 이벤트
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    // 터치 이벤트인 경우 preventDefault 호출
+    if (e.pointerType === 'touch') {
+      e.preventDefault()
+    }
+
     const point = getCanvasPoint(e.clientX, e.clientY)
 
     switch (tool) {
@@ -342,8 +356,6 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
         }
         break
     }
-
-    e.preventDefault()
   }, [tool, currentStrokeId, onAddPointToStroke, onEraseAtPoint, getCanvasPoint, resetAutoReturnTimer, gridSize, updateShapePosition, updateShapeSize])
 
   // 포인터 업 이벤트
@@ -504,24 +516,6 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
             }
           }
           break
-
-        // 도구 단축키
-        case '1':
-          e.preventDefault()
-          onToolChange('select')
-          break
-        case '2':
-          e.preventDefault()
-          onToolChange('pen')
-          break
-        case '3':
-          e.preventDefault()
-          onToolChange('eraser')
-          break
-        case '4':
-          e.preventDefault()
-          onToolChange('rect')
-          break
       }
     }
 
@@ -561,12 +555,14 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
                tool === 'eraser' ? 'pointer' :
                tool === 'select' ? 'default' :
                tool === 'rect' ? 'crosshair' : 'default',
-        outline: 'none' // 포커스 시 외곽선 제거
+        outline: 'none',
+        touchAction: 'none'
       }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerUp}
+      onPointerCancel={handlePointerUp}
     />
   )
 }

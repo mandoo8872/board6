@@ -1,8 +1,9 @@
-import { useCallback } from 'react'
-import { Shape, Point, TextBox } from '../types'
+import { useCallback, useRef } from 'react'
+import { Shape, Point, TextBox, DrawingTool } from '../types'
 import { snapPointToGrid } from '../utils/canvasHelpers'
 import { DEFAULT_SHAPE_WIDTH, DEFAULT_SHAPE_HEIGHT, DEFAULT_FILL_COLOR } from '../utils/constants'
-import { updateBoardData } from '../firebase'
+import { updateBoardData, isFirebaseAvailable } from '../firebase'
+import { createTextBox } from '../utils/objectFactory'
 
 interface UseShapesProps {
   shapes: Shape[]
@@ -18,6 +19,8 @@ export const useShapes = ({ shapes, setShapes, selectedId, setSelectedId, gridSi
     const snappedPoint = snapPointToGrid(point, gridSize)
     const userId = (typeof (window as any).userId === 'string' ? (window as any).userId : 'anonymous')
     const now = Date.now()
+    const currentZIndex = shapes.length
+
     const newRect: Shape = {
       id: now.toString(),
       type: 'rect',
@@ -34,6 +37,7 @@ export const useShapes = ({ shapes, setShapes, selectedId, setSelectedId, gridSi
       userId,
       updatedAt: now,
       updatedBy: userId,
+      zIndex: currentZIndex,
       meta: {
         isMovable: true,
         isDeletable: true,
@@ -41,74 +45,125 @@ export const useShapes = ({ shapes, setShapes, selectedId, setSelectedId, gridSi
         isErasable: false
       }
     }
-    setShapes(prev => [...prev, newRect])
-    updateBoardData({ [`shapes/${newRect.id}`]: newRect })
-    return newRect.id
-  }, [gridSize, setShapes])
 
-  // 새 텍스트박스 생성 (TextBox 명세 반영)
+    // 로컬 상태 업데이트
+    setShapes(prev => [...prev, newRect])
+
+    // Firebase에 전체 객체 저장
+    if (isFirebaseAvailable()) {
+      updateBoardData({
+        [`shapes/${newRect.id}`]: {
+          ...newRect,
+          zIndex: currentZIndex
+        }
+      })
+    }
+
+    return newRect.id
+  }, [gridSize, setShapes, shapes.length])
+
+  // 새 텍스트박스 생성
   const createText = useCallback((point: Point, content: string = '새 텍스트') => {
     const snappedPoint = snapPointToGrid(point, gridSize)
     const userId = (typeof (window as any).userId === 'string' ? (window as any).userId : 'anonymous')
     const now = Date.now()
-    const newTextBox: TextBox = {
-      id: now.toString(),
-      type: 'text',
-      x: snappedPoint.x,
-      y: snappedPoint.y,
-      width: 150,
-      height: 60,
-      content,
-      backgroundColor: '#888888',
-      opacity: 0.5,
-      textAlign: 'left',
-      verticalAlign: 'top',
-      meta: {
-        isMovable: true,
-        isDeletable: true,
-        isResizable: true,
-        isErasable: false
-      },
-      updatedAt: now,
-      updatedBy: userId
+    const currentZIndex = shapes.length
+
+    const newTextBox = createTextBox(snappedPoint.x, snappedPoint.y, content, currentZIndex)
+    newTextBox.selected = true
+    newTextBox.fill = '#888888'
+    newTextBox.opacity = 0.5
+    newTextBox.meta = {
+      ...newTextBox.meta,
+      fontSize: 40
     }
+    newTextBox.updatedAt = now
+    newTextBox.updatedBy = userId
+
+    // 로컬 상태 업데이트
     setShapes(prev => [...prev, newTextBox])
-    updateBoardData({ [`shapes/${newTextBox.id}`]: newTextBox })
+
+    // Firebase에 전체 객체 저장
+    if (isFirebaseAvailable()) {
+      const updates = {
+        [`shapes/${newTextBox.id}`]: {
+          ...newTextBox,
+          zIndex: currentZIndex
+        }
+      }
+      console.log('[useShapes] 텍스트박스 생성:', updates)
+      updateBoardData(updates)
+    }
+
     return newTextBox.id
-  }, [gridSize, setShapes])
+  }, [gridSize, shapes.length, setShapes])
 
   // 새 이미지 생성
-  const createImage = useCallback((point: Point, imageSrc?: string) => {
+  const createImage = useCallback((point: Point, imageUrl: string) => {
     const snappedPoint = snapPointToGrid(point, gridSize)
     const userId = (typeof (window as any).userId === 'string' ? (window as any).userId : 'anonymous')
     const now = Date.now()
-    const newImage: Shape = {
-      id: now.toString(),
-      type: 'image',
-      x: snappedPoint.x,
-      y: snappedPoint.y,
-      width: DEFAULT_SHAPE_WIDTH,
-      height: DEFAULT_SHAPE_WIDTH, // 이미지는 정사각형으로
-      imageSrc,
-      color: '#000000',
-      selected: true,
-      movable: true,
-      deletable: true,
-      resizable: true,
-      userId,
-      updatedAt: now,
-      updatedBy: userId,
-      meta: {
-        isMovable: true,
-        isDeletable: true,
-        isResizable: true,
-        isErasable: false
-      }
+    const currentZIndex = shapes.length
+
+    // 이미지 크기 계산을 위한 Promise 생성
+    const getImageDimensions = () => {
+      return new Promise<{ width: number; height: number }>((resolve) => {
+        const img = new Image()
+        img.onload = () => {
+          const width = 400
+          const height = Math.round(img.height * (width / img.width))
+          resolve({ width, height })
+        }
+        img.onerror = () => {
+          // 이미지 로드 실패 시 기본 크기 사용
+          resolve({ width: 400, height: 300 })
+        }
+        img.src = imageUrl
+      })
     }
-    setShapes(prev => [...prev, newImage])
-    updateBoardData({ [`shapes/${newImage.id}`]: newImage })
-    return newImage.id
-  }, [gridSize, setShapes])
+
+    // 이미지 생성 및 저장
+    getImageDimensions().then(({ width, height }) => {
+      const newImage: Shape = {
+        id: now.toString(),
+        type: 'image',
+        x: snappedPoint.x,
+        y: snappedPoint.y,
+        width,
+        height,
+        fill: '#ffffff',
+        opacity: 1,
+        selected: true,
+        zIndex: currentZIndex,
+        src: imageUrl,
+        meta: {
+          isMovable: true,
+          isDeletable: true,
+          isResizable: true,
+          isErasable: false
+        },
+        updatedAt: now,
+        updatedBy: userId
+      }
+
+      // 로컬 상태 업데이트
+      setShapes(prev => [...prev, newImage])
+
+      // Firebase에 전체 객체 저장
+      if (isFirebaseAvailable()) {
+        const updates = {
+          [`shapes/${newImage.id}`]: {
+            ...newImage,
+            zIndex: currentZIndex
+          }
+        }
+        console.log('[useShapes] 이미지 생성:', updates)
+        updateBoardData(updates)
+      }
+    })
+
+    return now.toString() // 임시 ID 반환
+  }, [gridSize, shapes.length, setShapes])
 
   // 셰이프 선택 (선택만 로컬에서 관리)
   const selectShape = useCallback((shapeId: string | null) => {
@@ -193,7 +248,26 @@ export const useShapes = ({ shapes, setShapes, selectedId, setSelectedId, gridSi
       const newShapes = [...prev]
       newShapes.splice(shapeIndex, 1)
       newShapes.push(shape)
-      return newShapes
+      
+      // z-index 업데이트
+      const updatedShape = {
+        ...shape,
+        zIndex: newShapes.length - 1,
+        updatedAt: Date.now(),
+        updatedBy: 'admin'
+      }
+      
+      // Firebase 업데이트
+      if (isFirebaseAvailable()) {
+        updateBoardData({
+          [`shapes/${shapeId}`]: updatedShape
+        })
+      }
+      
+      return newShapes.map((s, index) => ({
+        ...s,
+        zIndex: index
+      }))
     })
   }, [setShapes])
 
@@ -205,7 +279,26 @@ export const useShapes = ({ shapes, setShapes, selectedId, setSelectedId, gridSi
       const newShapes = [...prev]
       newShapes.splice(shapeIndex, 1)
       newShapes.unshift(shape)
-      return newShapes
+      
+      // z-index 업데이트
+      const updatedShape = {
+        ...shape,
+        zIndex: 0,
+        updatedAt: Date.now(),
+        updatedBy: 'admin'
+      }
+      
+      // Firebase 업데이트
+      if (isFirebaseAvailable()) {
+        updateBoardData({
+          [`shapes/${shapeId}`]: updatedShape
+        })
+      }
+      
+      return newShapes.map((s, index) => ({
+        ...s,
+        zIndex: index
+      }))
     })
   }, [setShapes])
 
@@ -217,7 +310,26 @@ export const useShapes = ({ shapes, setShapes, selectedId, setSelectedId, gridSi
       const temp = newShapes[shapeIndex]
       newShapes[shapeIndex] = newShapes[shapeIndex + 1]
       newShapes[shapeIndex + 1] = temp
-      return newShapes
+      
+      // z-index 업데이트
+      const updatedShape = {
+        ...temp,
+        zIndex: shapeIndex + 1,
+        updatedAt: Date.now(),
+        updatedBy: 'admin'
+      }
+      
+      // Firebase 업데이트
+      if (isFirebaseAvailable()) {
+        updateBoardData({
+          [`shapes/${shapeId}`]: updatedShape
+        })
+      }
+      
+      return newShapes.map((s, index) => ({
+        ...s,
+        zIndex: index
+      }))
     })
   }, [setShapes])
 
@@ -229,7 +341,26 @@ export const useShapes = ({ shapes, setShapes, selectedId, setSelectedId, gridSi
       const temp = newShapes[shapeIndex]
       newShapes[shapeIndex] = newShapes[shapeIndex - 1]
       newShapes[shapeIndex - 1] = temp
-      return newShapes
+      
+      // z-index 업데이트
+      const updatedShape = {
+        ...temp,
+        zIndex: shapeIndex - 1,
+        updatedAt: Date.now(),
+        updatedBy: 'admin'
+      }
+      
+      // Firebase 업데이트
+      if (isFirebaseAvailable()) {
+        updateBoardData({
+          [`shapes/${shapeId}`]: updatedShape
+        })
+      }
+      
+      return newShapes.map((s, index) => ({
+        ...s,
+        zIndex: index
+      }))
     })
   }, [setShapes])
 

@@ -44,10 +44,9 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   }
 
   const handleColorComplete = () => {
-    onUpdateShapeComplete({
-      ...selectedShape,
-      fill: localFill
-    })
+    if (onUpdateShape) {
+      onUpdateShape('fill', localFill)
+    }
   }
 
   const handleOpacityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -57,10 +56,9 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   }
 
   const handleOpacityComplete = () => {
-    onUpdateShapeComplete({
-      ...selectedShape,
-      opacity: localOpacity
-    })
+    if (onUpdateShape) {
+      onUpdateShape('opacity', localOpacity)
+    }
   }
 
   return (
@@ -216,7 +214,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
         </div>
       )}
 
-      {selectedShape.type === 'text' && (
+      {selectedShape.type === 'textbox' && (
         <div style={{ marginBottom: '15px' }}>
           <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#666', marginBottom: '5px' }}>
             텍스트 설정
@@ -224,16 +222,17 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <label style={{ fontSize: '11px', width: '40px' }}>내용:</label>
-              <input
-                type="text"
-                value={selectedShape.text || 'Text'}
-                onChange={(e) => onUpdateShape('text', e.target.value)}
+              <textarea
+                value={selectedShape.content ?? ''}
+                onChange={(e) => onUpdateShape('content', e.target.value || null)}
                 style={{ 
                   flex: 1, 
-                  padding: '2px 4px', 
+                  padding: '4px 8px', 
                   fontSize: '11px',
                   border: '1px solid #ccc',
-                  borderRadius: '3px'
+                  borderRadius: '3px',
+                  minHeight: '60px',
+                  resize: 'vertical'
                 }}
               />
             </div>
@@ -242,8 +241,8 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
               <label style={{ fontSize: '11px', width: '40px' }}>크기:</label>
               <input
                 type="number"
-                value={selectedShape.fontSize || 16}
-                onChange={(e) => onUpdateShape('fontSize', Number(e.target.value))}
+                value={selectedShape.meta?.fontSize || 16}
+                onChange={(e) => onUpdateShape('meta', { ...selectedShape.meta, fontSize: Number(e.target.value) })}
                 min="8"
                 max="72"
                 style={{ 
@@ -254,8 +253,56 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   borderRadius: '3px'
                 }}
               />
+              <div style={{ display: 'flex', gap: '4px' }}>
+                <button
+                  onClick={() => onUpdateShape('meta', { 
+                    ...selectedShape.meta, 
+                    fontWeight: selectedShape.meta?.fontWeight === 'bold' ? 'normal' : 'bold'
+                  })}
+                  style={{
+                    width: '24px',
+                    height: '24px',
+                    padding: '2px',
+                    border: '1px solid #ccc',
+                    borderRadius: '3px',
+                    backgroundColor: selectedShape.meta?.fontWeight === 'bold' ? '#e3e3e3' : 'white',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '12px',
+                    fontWeight: 'bold'
+                  }}
+                  title="굵게"
+                >
+                  B
+                </button>
+                <button
+                  onClick={() => onUpdateShape('meta', { 
+                    ...selectedShape.meta, 
+                    fontStyle: selectedShape.meta?.fontStyle === 'italic' ? 'normal' : 'italic'
+                  })}
+                  style={{
+                    width: '24px',
+                    height: '24px',
+                    padding: '2px',
+                    border: '1px solid #ccc',
+                    borderRadius: '3px',
+                    backgroundColor: selectedShape.meta?.fontStyle === 'italic' ? '#e3e3e3' : 'white',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '12px',
+                    fontStyle: 'italic'
+                  }}
+                  title="기울임"
+                >
+                  I
+                </button>
+              </div>
             </div>
-            
+
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <label style={{ fontSize: '11px', width: '40px' }}>배경:</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -281,6 +328,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                 </label>
               </div>
             </div>
+
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <label style={{ fontSize: '11px', width: '40px' }}>투명도:</label>
               <input
@@ -297,28 +345,6 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
               <span style={{ fontSize: '11px', minWidth: '30px', textAlign: 'right' }}>
                 {Math.round(localOpacity * 100)}%
               </span>
-            </div>
-            
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <label style={{ fontSize: '11px', width: '40px' }}>스타일:</label>
-              <div style={{ display: 'flex', gap: '5px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '11px' }}>
-                  <input
-                    type="checkbox"
-                    checked={selectedShape.fontWeight === 'bold'}
-                    onChange={(e) => onUpdateShape('fontWeight', e.target.checked ? 'bold' : 'normal')}
-                  />
-                  Bold
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '11px' }}>
-                  <input
-                    type="checkbox"
-                    checked={selectedShape.fontStyle === 'italic'}
-                    onChange={(e) => onUpdateShape('fontStyle', e.target.checked ? 'italic' : 'normal')}
-                  />
-                  Italic
-                </label>
-              </div>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>

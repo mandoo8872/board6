@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useCallback } from 'react'
 import { DrawingTool, CommandTool } from '../types'
 
 interface ToolbarProps {
@@ -13,6 +13,7 @@ interface ToolbarProps {
   onPenSizeChange?: (size: number) => void
   showGrid?: boolean
   onShowGridChange?: (show: boolean) => void
+  onEditEnd?: (shapes: any[]) => void
 }
 
 const Toolbar: React.FC<ToolbarProps> = ({
@@ -26,7 +27,8 @@ const Toolbar: React.FC<ToolbarProps> = ({
   penSize,
   onPenSizeChange,
   showGrid = false,
-  onShowGridChange
+  onShowGridChange,
+  onEditEnd
 }) => {
   const [showGridDropdown, setShowGridDropdown] = useState(false)
   
@@ -55,29 +57,39 @@ const Toolbar: React.FC<ToolbarProps> = ({
     { command: 'load', label: '불러오기', icon: '📁' }
   ];
 
-  // 이미지 도구 클릭 시 파일 선택 및 shape 생성
-  const handleImageToolClick = () => {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = 'image/*'
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0]
-      if (file) {
-        const reader = new FileReader()
-        reader.onload = (event) => {
-          const imageSrc = event.target?.result as string
-          if (imageSrc) {
-            // 이미지 shape 생성 명령을 Toolbar의 prop으로 전달
-            if (typeof onCommand === 'function') {
-              onCommand('image')
-            }
+  const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          const imageUrl = event.target.result as string
+          if (onCommand) {
+            onCommand('image')
           }
+          // 이미지 업로드 후 선택 도구로 전환
+          onToolChange('select')
         }
-        reader.readAsDataURL(file)
+      }
+      reader.readAsDataURL(file)
+    }
+    e.target.value = ''
+  }, [onCommand, onToolChange])
+
+  const handleToolClick = useCallback((selectedTool: DrawingTool) => {
+    if (selectedTool === currentTool) {
+      onToolChange('select')
+    } else {
+      onToolChange(selectedTool)
+      if (selectedTool === 'image') {
+        const fileInput = document.createElement('input')
+        fileInput.type = 'file'
+        fileInput.accept = 'image/*'
+        fileInput.onchange = (e) => handleImageUpload(e as any)
+        fileInput.click()
       }
     }
-    input.click()
-  }
+  }, [currentTool, onToolChange, handleImageUpload])
 
   return (
     <div style={{
@@ -112,7 +124,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
               {row.map(({ command, label, icon }) => (
                 <button
                   key={command}
-                  onClick={command === 'image' ? handleImageToolClick : () => onToolChange(command as DrawingTool)}
+                  onClick={() => handleToolClick(command as DrawingTool)}
                   style={{
                     padding: '14px 0 8px 0',
                     border: currentTool === command ? '2px solid #0066ff' : '1px solid #ccc',

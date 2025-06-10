@@ -32,6 +32,7 @@ interface CanvasWrapperProps {
   onMoveShape?: (shapeId: string, newPosition: { x: number; y: number }) => void
   onResizeShape?: (shapeId: string, newSize: { width: number; height: number; x?: number; y?: number }) => void
   userId: string
+  onUpdateShape?: (shapeId: string, property: string, value: any) => void
 }
 
 const CanvasWrapper: React.FC<CanvasWrapperProps> = ({
@@ -54,7 +55,8 @@ const CanvasWrapper: React.FC<CanvasWrapperProps> = ({
   showGrid = true,
   onMoveShape,
   onResizeShape,
-  userId
+  userId,
+  onUpdateShape
 }) => {
   const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null)
   const [currentStrokeId, setCurrentStrokeId] = useState<string | null>(null)
@@ -101,17 +103,16 @@ const CanvasWrapper: React.FC<CanvasWrapperProps> = ({
     ))
 
     // Firebase 업데이트
-    if (onMoveShape) {
+    if (onUpdateShape) {
       const shape = shapes.find(s => s.id === updates.id)
       if (shape) {
-        onMoveShape(updates.id, {
-          x: shape.x,
-          y: shape.y,
-          ...updates
-        })
+        onUpdateShape(updates.id, 'fill', updates.fill)
+        if (updates.opacity !== undefined) {
+          onUpdateShape(updates.id, 'opacity', updates.opacity)
+        }
       }
     }
-  }, [onMoveShape, setShapes, shapes])
+  }, [onUpdateShape, setShapes, shapes])
 
   // Undo/Redo 훅
   const undoRedoActions = useUndoRedo({

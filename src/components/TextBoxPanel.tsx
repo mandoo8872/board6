@@ -23,7 +23,8 @@ export const TextBoxPanel: React.FC<TextBoxPanelProps> = ({
   }, [textBox])
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    onUpdate({ content: e.target.value })
+    const newContent = e.target.value
+    onUpdate({ content: newContent || null })
   }
 
   const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -77,7 +78,16 @@ export const TextBoxPanel: React.FC<TextBoxPanelProps> = ({
         <textarea
           value={textBox.content ?? ''}
           onChange={handleContentChange}
-          rows={3}
+          rows={5}
+          style={{
+            width: '100%',
+            minHeight: '100px',
+            padding: '8px',
+            fontSize: '14px',
+            border: '1px solid #ccc',
+            borderRadius: '4px',
+            resize: 'vertical'
+          }}
         />
       </div>
 
