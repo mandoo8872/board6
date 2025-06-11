@@ -1,4 +1,7 @@
-**📘 Board 6 공유보드 통합 기획서 (v1.0 - 2024.06.04 기준)**
+# ⚠️ 아카이브 브랜치 안내
+이 브랜치는 더 이상 사용되지 않으며, Firebase 연결은 제거된 보존용 아카이브입니다.
+
+# Board 6 공유보드 통합 기획서 (v1.1 - 2024.06.04 기준)
 
 ---
 
@@ -7,12 +10,12 @@
 * **목적:**
 
   * 사무실 관리자와 현장 키오스크 간의 정보 공유를 위한 캔버스 기반 공유보드 구축
-  * Firebase Realtime Database를 통한 실시간 동기화 구현
+  * 실시간 동기화 구현
   * Vercel 기반 웹앱으로 배포
 
 * **사용자 시나리오:**
 
-  * **관리자(AdminPage):** 객체 생성/배치/편집, Firebase Push/Pull, JSON 저장/불러오기
+  * **관리자(AdminPage):** 객체 생성/배치/편집, 저장/불러오기
   * **현장 사용자(ViewPage):** 필기/지우개 도구 사용, 도구 제한 UI, 실시간 동기화
 
 ---
@@ -33,7 +36,7 @@
 <canvas ref={drawCanvasRef} style={{ zIndex: 2 }} />
 ```
 
-* **저장 구조:** Firebase Realtime Database + localStorage + JSON 내보내기/불러오기
+* **저장 구조:** localStorage + JSON 내보내기/불러오기
 
 * **해상도 정책:** 고정 해상도 2160 × 3840(px) 세로형 캔버스 기준으로 렌더링하며, ViewCam 개념은 사용하지 않음
 
@@ -46,7 +49,7 @@
 
 * **전체 레이아웃 구성:**
 
-  * 좌상단: 도구모음 Toolbar (아이콘 + 텍스트)
+  * 좌상단: 플로팅 툴바 (도구 선택, 크기/투명도 조절)
   * 중앙: 캔버스 영역 (세로 4K 고정, 스케일 렌더링)
   * 우상단: 객체 속성 및 권한 설정 패널
 
@@ -54,26 +57,29 @@
 
 ## 🧱 3. 시스템 기능 기획
 
-### 3.x 저장 및 동기화 방식
+### 3.0 플로팅 툴바
 
-* **Firebase Realtime Database:**
+* **위치 및 크기:**
+  * 기본 위치: 좌상단 (x: 50, y: 50)
+  * 기본 크기: 600 x 80px
+  * 기본 투명도: 50%
 
-  * 실시간 동기화를 위한 메인 저장소
-  * boards/mainBoard에 전체 상태 저장
-  * 환경변수로 설정 관리
+* **드래그 영역:**
+  * 상단 20px 영역에서만 드래그 가능
+  * 캔버스 영역 내로 위치 제한
+  * 최소 크기: 200 x 100px
 
-* **Save / Load (저장 및 불러오기):**
+* **도구 구성:**
+  * 선택, 펜, 지우개 도구
+  * 색상 선택기
+  * 크기 조절 바 (1-20)
+  * 투명도 조절 바 (10-100%)
 
-  * 객체 및 stroke 전체 상태 + 메타 정보를 JSON으로 저장
-  * localStorage에 임시 보관 가능
+* **상태 저장:**
+  * localStorage에 위치, 크기, 투명도 저장
+  * 페이지 로드 시 복원
 
-* **Push / Pull (전송 및 수신):**
-
-  * ViewPage <-> AdminPage 간 Firebase를 통한 실시간 동기화
-  * Push: 관리자 → 현장에 보드 상태 보내기
-  * Pull: 관리자 ← 현장의 현재 보드 상태 불러오기
-
-### 3.0 그리드 및 스냅
+### 3.1 그리드 및 스냅
 
 * **그리드(Grid):**
 
@@ -86,7 +92,7 @@
   * 객체 이동 시 항상 적용되며, 사용자가 위치를 조정하면 그리드에 맞춰 자동 정렬됨
   * 객체 생성/이동/크기 조절 시 좌표는 가장 가까운 그리드 단위로 정규화됨
 
-### 3.1 도구 및 입력 정책
+### 3.2 도구 및 입력 정책
 
 * **도구 목록:**
 
@@ -113,7 +119,7 @@
   | rect       | pointer click | 클릭 지점에 사각형 생성, 선택됨                  | 도구 전환 또는 다른 객체 클릭 시 종료                 |
   | text/image | onCommand 호출  | 지정된 위치에 객체 생성                       | 삽입 즉시 select 전환                        |
 
-### 3.2 객체 정책
+### 3.3 객체 정책
 
 * **기본 객체 유형:** rect, text, image (stroke는 독립 처리)
 * **객체 메타 속성:**
@@ -126,7 +132,7 @@
   * Ctrl+D 또는 Ctrl+C/V로 복제
   * 선택 상태 escape로 해제 가능
 
-### 3.3 텍스트 박스 객체
+### 3.4 텍스트 박스 객체
 
 * **생성 방식:**
   * 툴바의 텍스트 박스 도구 선택 후 캔버스 클릭
@@ -193,12 +199,6 @@
 
 ## 🔐 6. 개발 정책 및 제한 사항
 
-* **Firebase 연동:**
-
-  * Firebase Realtime Database를 통한 실시간 동기화 구현
-  * 환경변수로 설정 관리
-  * 연결 실패 시 localStorage fallback
-
 * **배포 정책:**
 
   * Vercel 웹앱 기반으로 개발 및 배포
@@ -212,29 +212,27 @@
 
 ---
 
-## 🔥 7. 보드 연동 및 실시간 동기화 정책 (v1.0)
+## 🔥 7. 보드 연동 및 실시간 동기화 정책 (v1.1)
 
 ### 7.1 연동 구조 개요
-- **관리자(AdminPage)**: 보드 상태를 직접 편집하고, Firebase Realtime Database에 전체 상태를 저장
-- **현장(ViewPage)**: Firebase의 보드 상태를 실시간 구독하여, 관리자가 push한 최신 상태를 즉시 반영
-- **localStorage**: Firebase 연결 실패/오프라인 시 fallback 용도로 사용
+- **관리자(AdminPage)**: 보드 상태를 직접 편집하고, 전체 상태를 저장
+- **현장(ViewPage)**: 실시간 구독하여, 관리자가 push한 최신 상태를 즉시 반영
+- **localStorage**: 오프라인 시 fallback 용도로 사용
 
 ### 7.2 주요 연동 흐름
-- **Push (Admin → View)**: AdminPage에서 pushToFirebase() 호출 → Firebase에 전체 상태 저장 → ViewPage에서 subscribeToBoardChanges()로 실시간 반영
+- **Push (Admin → View)**: AdminPage에서 pushToStorage() 호출 → ViewPage에서 pullFromStorage()로 실시간 반영
 - **Pull (View → Admin)**: 필요 시 ViewPage의 상태를 pullFromStorage()로 불러와 AdminPage에서 복원 가능
 - **저장/불러오기**: useBoardStorage 훅을 통해 JSON 파일로 내보내기/불러오기, localStorage 임시 저장 지원
 
 ### 7.3 환경변수 및 예외 처리
-- .env 및 Vercel 환경변수에 Firebase 설정 필요
-- Firebase 연결 실패 시 자동으로 localStorage fallback
-- 실시간 동기화가 안 될 경우, 콘솔/네트워크 로그 및 환경변수, Firebase 규칙, 배포 상태 점검
+- 실시간 동기화가 안 될 경우, 콘솔/네트워크 로그 및 배포 상태 점검
 
 ### 7.4 실제 코드 흐름 예시
-- AdminPage: useBoardStorage의 pushToFirebase(), pushToStorage(), saveToFile() 등 사용
-- ViewPage: subscribeToBoardChanges()로 실시간 구독, isFirebaseAvailable()로 환경 체크 후 localStorage fallback
+- AdminPage: useBoardStorage의 pushToStorage(), saveToFile() 등 사용
+- ViewPage: pullFromStorage()로 실시간 구독
 
 ### 7.5 데이터 구조
-- Firebase boards/mainBoard에 전체 상태(JSON) 저장: shapes, strokes, selectedId, timestamp 등 포함
+- localStorage에 전체 상태(JSON) 저장: shapes, strokes, selectedId, timestamp 등 포함
 
 ### 7.6 동기화 최적화
 - **Debounce/Throttle 적용:**
@@ -245,17 +243,9 @@
 - **동기화 유틸리티:**
   * `syncUtils.ts`에서 동기화 관련 핵심 기능 제공
   * `createSyncCallbacks`: 동기화 콜백 함수 생성
-  * `syncToFirebase`: Firebase 데이터 업데이트
-  * `syncStrokesToFirebase`: 스트로크 데이터 동기화
-  * `mergeLWW`: Last Write Wins 병합 전략 구현
-
-- **동기화 전략:**
-  * LWW(Last Write Wins) 병합 전략으로 충돌 해결
-  * 타임스탬프 기반 업데이트 순서 결정
-  * 삭제된 객체(tombstone) 처리 포함
 
 ---
 
 ## ✅ 정리
 
-Board 6 v1.0은 Firebase Realtime Database를 통한 실시간 동기화를 구현하고, 각 도구/레이어/상태를 명확히 분리하여 안정성을 확보했습니다. 다음 단계로는 컴포넌트 분리와 도구별 전용 처리 모듈 도입이 권장됩니다.
+Board 6 v1.1은 실시간 동기화를 구현하고, 각 도구/레이어/상태를 명확히 분리하여 안정성을 확보했습니다. 다음 단계로는 컴포넌트 분리와 도구별 전용 처리 모듈 도입이 권장됩니다.

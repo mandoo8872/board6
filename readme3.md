@@ -1,4 +1,4 @@
-**📁 Board 6 전용 파일구조 설계 및 Cursor용 명세 (v1.0 - 2025.06.04 기준)**
+**📁 Board 6 전용 파일구조 설계 및 Cursor용 명세 (v1.1 - 2024.06.04 기준)**
 
 ---
 
@@ -10,22 +10,22 @@ src/
 │   ├── CanvasWrapper.tsx        # 전체 캔버스와 도구 상태 통합 컨테이너
 │   ├── DrawLayer.tsx            # drawCanvas 전용: 필기, 지우개
 │   ├── BaseLayer.tsx            # baseCanvas 전용: 객체, 그리드
-│   ├── Toolbar.tsx              # 도구 선택 UI
+│   ├── FloatingToolbar.tsx      # 플로팅 툴바 (도구 선택, 크기/투명도 조절)
 │   ├── PropertiesPanel.tsx      # 우상단 객체 속성 제어 패널
 │   ├── TextBoxPanel.tsx         # 텍스트 박스 전용 속성 패널
 │   └── InteractionLayer.tsx     # pointer 이벤트 핸들링, 도구 전환, 선택 등
 ├── hooks/
 │   ├── useStroke.ts             # stroke 관리 훅 (add/remove 등)
 │   ├── useShapes.ts             # shape 선택, 이동, 삭제 등
-│   ├── useBoardStorage.ts       # Firebase 연동 및 저장/불러오기 관리
-│   └── useTextBox.ts            # 텍스트 박스 생성 및 편집 관리
+│   ├── useBoardStorage.ts       # 저장/불러오기 관리
+│   ├── useTextBox.ts            # 텍스트 박스 생성 및 편집 관리
+│   └── useToolbar.ts            # 플로팅 툴바 상태 관리
 ├── types/
 │   └── index.ts                 # Stroke, Shape, Tool 등 공통 타입 정의
 ├── utils/
 │   ├── canvasHelpers.ts         # drawStroke, drawGrid 등 공통 캔버스 렌더 함수
-│   ├── firebase.ts              # Firebase 설정 및 연동 유틸리티
 │   ├── debounceThrottle.ts      # 이벤트 최적화 유틸리티 (debounce/throttle)
-│   ├── syncUtils.ts             # 동기화 관련 유틸리티 (LWW 병합, 콜백 등)
+│   ├── syncUtils.ts             # 동기화 관련 유틸리티 (콜백 등)
 │   ├── objectFactory.ts         # 객체 생성 유틸리티 (텍스트 박스 포함)
 │   └── constants.ts             # 해상도, 기본 설정 등
 ├── App.tsx                      # 라우팅 및 진입점
@@ -55,11 +55,15 @@ src/
 * baseCanvas 렌더링: grid + shape + selected 상태
 * select, rect 도구에만 렌더링 관련 처리
 
-### 🎨 Toolbar.tsx
+### 🎨 FloatingToolbar.tsx
 
-* 도구 버튼 UI
-* `onToolChange(tool: DrawingTool)` 전달
-* `onCommand(command: CommandTool)` 분리 처리 (text/image/undo 등)
+* 플로팅 툴바 UI 및 상태 관리
+* props: `tool`, `penColor`, `penSize`, `opacity`, `onToolChange`, `onPenColorChange`, `onPenSizeChange`, `onOpacityChange`
+* 역할:
+  * 도구 버튼 UI
+  * 색상/크기/투명도 조절 UI
+  * 드래그/리사이즈 처리
+  * 상태 저장/복원
 
 ### 🧾 PropertiesPanel.tsx
 
@@ -95,15 +99,20 @@ src/
 
 ### `useBoardStorage.ts`
 
-* Firebase 실시간 동기화 관리
+* 실시간 동기화 관리
 * localStorage fallback 처리
 * JSON 파일 저장/불러오기
 * debounce/throttle을 통한 동기화 최적화
-* LWW 병합 전략을 통한 충돌 해결
 
 ### `useTextBox.ts`
 
 * 텍스트 박스 생성 및 편집 관리
+
+### `useToolbar.ts`
+
+* 플로팅 툴바 상태 관리
+* 드래그/리사이즈 처리
+* localStorage 저장/복원
 
 ### `types/index.ts`
 
@@ -144,6 +153,14 @@ export interface TextBox extends Shape {
   textAlign: 'left' | 'center' | 'right'
   verticalAlign: 'top' | 'middle' | 'bottom'
 }
+
+export interface ToolbarState {
+  x: number
+  y: number
+  width: number
+  height: number
+  opacity: number
+}
 ```
 
 ---
@@ -155,11 +172,12 @@ export interface TextBox extends Shape {
 * drawCanvas와 baseCanvas는 **항상 동시에 존재**하며, `zIndex`로 구분됨
 * useEffect는 각 상태 변경 (strokes, shapes, selectedId 등)에 따라 개별적으로 처리할 것
 * 타이머, 자동도구복귀는 커스텀 훅으로 빼도 되지만 기능 정확성 최우선
-* Firebase 연동은 useBoardStorage 훅을 통해서만 처리할 것
+* 동기화는 useBoardStorage 훅을 통해서만 처리할 것
 * 동기화 시 debounce/throttle을 적절히 사용하여 성능 최적화할 것
-* LWW 병합 전략을 통해 동시성 문제 해결할 것
 * 텍스트 박스는 사이드 패널에서만 편집 가능하도록 제한할 것
 * 클립보드 붙여넣기 시 텍스트 박스 자동 생성 기능 구현할 것
+* 플로팅 툴바는 상단 20px 영역에서만 드래그 가능하도록 제한할 것
+* 플로팅 툴바의 크기/투명도 조절 바는 드래그 영역과 겹치지 않도록 처리할 것
 
 ---
 
