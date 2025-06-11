@@ -321,7 +321,7 @@ export const drawAllShapes = (ctx: CanvasRenderingContext2D, shapes: Shape[]) =>
           
           // 텍스트 정렬 설정
           ctx.textAlign = shape.textAlign || 'left'
-          ctx.textBaseline = shape.verticalAlign || 'top'
+          ctx.textBaseline = 'top'
           
           // 텍스트 위치 계산
           let textX = x
@@ -335,28 +335,23 @@ export const drawAllShapes = (ctx: CanvasRenderingContext2D, shapes: Shape[]) =>
             textX = x + 5
           }
           
-          if (shape.verticalAlign === 'middle') {
-            textY = y + height / 2
-          } else if (shape.verticalAlign === 'bottom') {
-            textY = y + height - 5
-          } else {
-            textY = y + 5
-          }
-
           // 여러 줄 텍스트 처리
           const lines = shape.content.split('\n')
           const lineHeight = (shape.meta?.fontSize || 16) * 1.2 // 줄 간격을 폰트 크기의 1.2배로 설정
+          const totalHeight = lines.length * lineHeight
           
+          // 세로 정렬에 따른 시작 위치 계산
+          if (shape.verticalAlign === 'middle') {
+            textY = y + (height - totalHeight) / 2
+          } else if (shape.verticalAlign === 'bottom') {
+            textY = y + height - totalHeight
+          } else {
+            textY = y + 5
+          }
+          
+          // 각 줄 그리기
           lines.forEach((line, index) => {
-            let currentY = textY
-            if (shape.verticalAlign === 'middle') {
-              currentY = textY - (lines.length * lineHeight) / 2 + index * lineHeight
-            } else if (shape.verticalAlign === 'bottom') {
-              currentY = textY - lines.length * lineHeight + index * lineHeight
-            } else {
-              currentY = textY + index * lineHeight
-            }
-            ctx.fillText(line, textX, currentY)
+            ctx.fillText(line, textX, textY + index * lineHeight)
           })
         }
         break
