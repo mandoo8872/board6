@@ -65,6 +65,7 @@ const CanvasWrapper: React.FC<CanvasWrapperProps> = ({
   const shapesRef = useRef(shapes)
   const setShapesRef = useRef(setShapes)
   const { selectedTextBox, createNewTextBox, updateTextBox, deselectTextBox, handlePaste } = useTextBox()
+  const [lastMousePosition, setLastMousePosition] = useState<Point>({ x: 0, y: 0 })
 
   // shapes 상태 업데이트
   useEffect(() => {
@@ -348,6 +349,15 @@ const CanvasWrapper: React.FC<CanvasWrapperProps> = ({
     }
   }, [tool])
 
+  // 마우스 위치 업데이트
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    const rect = (e.target as HTMLElement).getBoundingClientRect()
+    setLastMousePosition({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    })
+  }, [])
+
   // 텍스트 도구 선택 후 캔버스 클릭 시 텍스트박스 생성
   const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
     console.log('[캔버스 클릭] 현재 tool:', tool)
@@ -369,46 +379,117 @@ const CanvasWrapper: React.FC<CanvasWrapperProps> = ({
 
   // Ctrl+V로 텍스트박스 생성
   const handlePasteEvent = (e: ClipboardEvent) => {
-    if (tool === 'text') {
-      const newTextBox = handlePaste(e as any)
+    // 텍스트 붙여넣기 처리
+    const text = e.clipboardData?.getData('text')
+    if (text) {
+      const newTextBox = createNewTextBox(lastMousePosition.x, lastMousePosition.y, text)
       if (newTextBox) {
         setShapes((prev: Shape[]) => [...prev, newTextBox])
         setSelectedId(newTextBox.id)
       }
+      return
+    }
+
+    // 이미지 붙여넣기 처리
+    const items = e.clipboardData?.items
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          const file = items[i].getAsFile()
+          if (file) {
+            const reader = new FileReader()
+            reader.onload = (event) => {
+              const imageSrc = event.target?.result as string
+              if (imageSrc) {
+                const imageId = shapeActions.createImage(lastMousePosition, imageSrc)
+                setSelectedId(imageId)
+              }
+            }
+            reader.readAsDataURL(file)
+            break
+          }
+        }
+      }
     }
   }
 
-  // Delete/Backspace 비활성화 (텍스트박스 선택 시)
+  // 키보드 이벤트 처리
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (selectedTextBox && (e.key === 'Delete' || e.key === 'Backspace')) {
-        e.preventDefault()
+      // 텍스트 편집 중인지 확인 (input, textarea, contenteditable 요소가 포커스된 경우)
+      const activeElement = document.activeElement
+      const isTextEditing = activeElement && (
+        activeElement.tagName === 'INPUT' ||
+        activeElement.tagName === 'TEXTAREA' ||
+        activeElement.getAttribute('contenteditable') === 'true' ||
+        activeElement.getAttribute('contenteditable') === ''
+      )
+
+      // 텍스트 편집 중이면 Delete/Backspace 키 무시
+      if (isTextEditing && (e.key === 'Delete' || e.key === 'Backspace')) {
+        return
+      }
+
+      // Ctrl 키 조합 처리
+      if (e.ctrlKey || e.metaKey) {
+        switch (e.key.toLowerCase()) {
+          case 'd':
+            e.preventDefault()
+            if (selectedId && handleDuplicateSelectedShape) {
+              handleDuplicateSelectedShape()
+            }
+            break
+        }
+        return
+      }
+
+      // 단일 키 처리
+      switch (e.key) {
+        case 'Escape':
+          e.preventDefault()
+          setSelectedId(null)
+          onToolChange('select')
+          break
+
+        case 'Delete':
+        case 'Backspace':
+          e.preventDefault()
+          if (selectedId && handleDeleteSelectedShape) {
+            // 선택된 객체의 삭제 가능 여부 확인
+            const selectedShape = shapes.find(s => s.id === selectedId)
+            if (selectedShape?.meta?.isDeletable !== false) {
+              handleDeleteSelectedShape()
+            }
+          }
+          break
       }
     }
+
+    // 전역 키보드 이벤트 리스너 등록
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [selectedTextBox])
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [selectedId, shapes, setSelectedId, onToolChange, handleDeleteSelectedShape, handleDuplicateSelectedShape])
 
   useEffect(() => {
     document.addEventListener('paste', handlePasteEvent)
     return () => {
       document.removeEventListener('paste', handlePasteEvent)
     }
-  }, [tool])
+  }, [tool, lastMousePosition])
 
   useEffect(() => {
     console.log('[툴바] 현재 tool 상태:', tool)
   }, [tool])
 
   return (
-    <div ref={containerRef} style={{
-      position: 'relative',
-      width: '100%',
-      height: '100%',
-      margin: 0,
-      padding: 0,
-      overflow: 'hidden'
-    }}>
+    <div 
+      ref={containerRef}
+      style={{ position: 'relative', width: '100%', height: '100%' }}
+      onMouseMove={handleMouseMove}
+    >
       <div style={getContainerStyle()}>
         <BaseLayer
           shapes={shapes}
