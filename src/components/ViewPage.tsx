@@ -66,6 +66,7 @@ const ViewPage: React.FC = () => {
   const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 })
 
   const toolbarRef = useRef<HTMLDivElement>(null)
+  const canvasBoxRef = useRef<HTMLDivElement>(null)
 
   // 보드 저장/불러오기 훅 (자동 저장용)
   const storageActions = useBoardStorage({
@@ -83,25 +84,25 @@ const ViewPage: React.FC = () => {
     localStorage.setItem('viewpage-toolbar-state', JSON.stringify(toolbarState))
   }, [toolbarState])
 
-  // 화면 경계 내로 위치/크기 조정
+  // 캔버스 영역 내로 위치/크기 조정
   const constrainToScreen = useCallback((state: ToolbarState): ToolbarState => {
-    const minWidth = 200
-    const minHeight = 100
-    const maxWidth = window.innerWidth - 20
-    const maxHeight = window.innerHeight - 20
-
-    let { x, y, width, height, opacity } = state
-
-    // 크기 제한
-    width = Math.max(minWidth, Math.min(width, maxWidth))
-    height = Math.max(minHeight, Math.min(height, maxHeight))
-
-    // 위치 제한
-    x = Math.max(10, Math.min(x, window.innerWidth - width - 10))
-    y = Math.max(10, Math.min(y, window.innerHeight - height - 10))
-
-    return { x, y, width, height, opacity }
-  }, [])
+    const minWidth = 200;
+    const minHeight = 100;
+    let maxLeft = 0, maxTop = 0, maxWidth = window.innerWidth, maxHeight = window.innerHeight;
+    if (canvasBoxRef.current) {
+      const rect = canvasBoxRef.current.getBoundingClientRect();
+      maxLeft = rect.left;
+      maxTop = rect.top;
+      maxWidth = rect.width;
+      maxHeight = rect.height;
+    }
+    let { x, y, width, height, opacity } = state;
+    width = Math.max(minWidth, Math.min(width, maxWidth));
+    height = Math.max(minHeight, Math.min(height, maxHeight));
+    x = Math.max(maxLeft, Math.min(x, maxLeft + maxWidth - width));
+    y = Math.max(maxTop, Math.min(y, maxTop + maxHeight - height));
+    return { x, y, width, height, opacity };
+  }, []);
 
   // 툴바 드래그 시작
   const handleDragStart = useCallback((e: React.MouseEvent) => {
@@ -305,15 +306,19 @@ const ViewPage: React.FC = () => {
       overflow: 'hidden'
     }}>
       {/* 캔버스 영역 */}
-      <div style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        width: '100%',
-        height: '100%'
-      }}>
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: '100%',
+          height: '100%',
+          margin: 0,
+          padding: 0
+        }}
+      >
         <CanvasWrapper
           tool={tool}
           shapes={shapes}
@@ -330,6 +335,7 @@ const ViewPage: React.FC = () => {
           userId="viewer"
           onMoveShape={syncCallbacks.onMoveShape}
           onResizeShape={syncCallbacks.onResizeShape}
+          containerRef={canvasBoxRef}
         />
       </div>
 
@@ -354,131 +360,197 @@ const ViewPage: React.FC = () => {
           userSelect: 'none'
         }}
       >
-        {/* 드래그 헤더 */}
+        {/* 툴바 컨텐츠 */}
         <div
           style={{
-            height: '24px',
-            backgroundColor: 'rgba(0, 102, 255, 0.1)',
-            borderRadius: '12px 12px 0 0',
-            cursor: isDragging ? 'grabbing' : 'grab',
+            flex: 1,
+            padding: '0',
             display: 'flex',
             alignItems: 'center',
+            gap: '0',
+            flexWrap: 'wrap',
             justifyContent: 'center',
-            borderBottom: '1px solid rgba(221, 221, 221, 0.5)'
+            overflow: 'auto',
+            cursor: 'default',
+            position: 'relative'
           }}
-          onMouseDown={handleDragStart}
         >
-          <div style={{
-            width: '40px',
-            height: '4px',
-            backgroundColor: 'rgba(0, 102, 255, 0.3)',
-            borderRadius: '2px'
-          }}></div>
-        </div>
+          {/* 드래그 영역 */}
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '20px',
+              cursor: 'move',
+              zIndex: 1
+            }}
+            onMouseDown={handleDragStart}
+          />
 
-        {/* 툴바 컨텐츠 */}
-        <div style={{
-          flex: 1,
-          padding: '8px 12px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          flexWrap: 'wrap',
-          justifyContent: 'center'
-        }}>
           {/* 도구 버튼들 */}
-          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+          <div style={{ 
+            display: 'flex', 
+            gap: '0', 
+            alignItems: 'center', 
+            flexWrap: 'wrap',
+            flex: '1 1 auto',
+            minWidth: 'fit-content',
+            margin: 0,
+            padding: '20px 0 0 0',
+            position: 'relative',
+            zIndex: 2
+          }}>
             {/* 선택 도구 */}
             <button
               onClick={() => handleToolChange('select')}
               style={{
-                padding: '6px',
+                padding: '0',
+                margin: 0,
                 border: tool === 'select' ? '2px solid #0066ff' : '1px solid rgba(204, 204, 204, 0.6)',
-                borderRadius: '6px',
+                borderRadius: '4px',
                 backgroundColor: tool === 'select' ? 'rgba(240, 248, 255, 0.9)' : 'rgba(255, 255, 255, 0.7)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                minWidth: '32px',
-                minHeight: '32px'
+                width: `calc(${toolbarState.width * 0.08}px)`,
+                height: `calc(${toolbarState.width * 0.08}px)`,
+                minWidth: '28px',
+                minHeight: '28px'
               }}
               title="선택"
             >
-              <span style={{ fontSize: '16px' }}>👆</span>
+              <span style={{ 
+                fontSize: `clamp(14px, ${toolbarState.width * 0.02}px, 200px)`,
+              }}>👆</span>
             </button>
 
             {/* 펜 도구 */}
             <button
               onClick={() => handleToolChange('pen')}
               style={{
-                padding: '6px',
+                padding: '0',
+                margin: 0,
                 border: tool === 'pen' ? '2px solid #0066ff' : '1px solid rgba(204, 204, 204, 0.6)',
-                borderRadius: '6px',
+                borderRadius: '4px',
                 backgroundColor: tool === 'pen' ? 'rgba(240, 248, 255, 0.9)' : 'rgba(255, 255, 255, 0.7)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                minWidth: '32px',
-                minHeight: '32px'
+                width: `calc(${toolbarState.width * 0.08}px)`,
+                height: `calc(${toolbarState.width * 0.08}px)`,
+                minWidth: '28px',
+                minHeight: '28px'
               }}
               title="펜"
             >
-              <span style={{ fontSize: '16px' }}>✏️</span>
+              <span style={{ 
+                fontSize: `clamp(14px, ${toolbarState.width * 0.02}px, 200px)`,
+              }}>✏️</span>
             </button>
 
             {/* 지우개 도구 */}
             <button
               onClick={() => handleToolChange('eraser')}
               style={{
-                padding: '6px',
+                padding: '0',
+                margin: 0,
                 border: tool === 'eraser' ? '2px solid #0066ff' : '1px solid rgba(204, 204, 204, 0.6)',
-                borderRadius: '6px',
+                borderRadius: '4px',
                 backgroundColor: tool === 'eraser' ? 'rgba(240, 248, 255, 0.9)' : 'rgba(255, 255, 255, 0.7)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                minWidth: '32px',
-                minHeight: '32px'
+                width: `calc(${toolbarState.width * 0.08}px)`,
+                height: `calc(${toolbarState.width * 0.08}px)`,
+                minWidth: '28px',
+                minHeight: '28px'
               }}
               title="지우개"
             >
-              <span style={{ fontSize: '16px' }}>🧽</span>
+              <span style={{ 
+                fontSize: `clamp(14px, ${toolbarState.width * 0.02}px, 200px)`,
+              }}>🧽</span>
             </button>
           </div>
 
           {/* 구분선 */}
           <div style={{ 
             width: '1px', 
-            height: '25px', 
-            backgroundColor: 'rgba(204, 204, 204, 0.6)' 
+            height: `calc(${toolbarState.width * 0.04}px)`,
+            minHeight: '20px',
+            backgroundColor: 'rgba(204, 204, 204, 0.6)',
+            margin: '0 1px'
           }}></div>
 
           {/* 색상 설정 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <label style={{ fontSize: '10px', fontWeight: 'bold', color: '#666' }}>색상:</label>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '0', 
+            flexWrap: 'wrap',
+            flex: '1 1 auto',
+            minWidth: 'fit-content',
+            position: 'relative',
+            zIndex: 2
+          }}>
+            <label style={{ 
+              fontSize: `clamp(9px, ${toolbarState.width * 0.015}px, 120px)`,
+              fontWeight: 'bold', 
+              color: '#666' 
+            }}>색상:</label>
             <input
               type="color"
               value={penColor}
               onChange={(e) => setPenColor(e.target.value)}
-              style={{ width: '28px', height: '20px', border: 'none', borderRadius: '3px' }}
+              style={{ 
+                width: `calc(${toolbarState.width * 0.04}px)`,
+                height: `calc(${toolbarState.width * 0.03}px)`,
+                minWidth: '24px',
+                minHeight: '18px',
+                border: 'none', 
+                borderRadius: '2px' 
+              }}
             />
           </div>
 
           {/* 크기 설정 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <label style={{ fontSize: '10px', fontWeight: 'bold', color: '#666' }}>크기:</label>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '0', 
+            flexWrap: 'wrap',
+            flex: '1 1 auto',
+            minWidth: 'fit-content',
+            position: 'relative',
+            zIndex: 2
+          }}>
+            <label style={{ 
+              fontSize: `clamp(9px, ${toolbarState.width * 0.015}px, 120px)`,
+              fontWeight: 'bold', 
+              color: '#666' 
+            }}>크기:</label>
             <input
               type="range"
               min="1"
               max="20"
               value={penSize}
               onChange={(e) => setPenSize(Number(e.target.value))}
-              style={{ width: '50px' }}
+              style={{ 
+                width: `calc(${toolbarState.width * 0.08}px)`,
+                minWidth: '40px'
+              }}
             />
-            <span style={{ fontSize: '10px', fontWeight: 'bold', minWidth: '18px', color: '#666' }}>
+            <span style={{ 
+              fontSize: `clamp(9px, ${toolbarState.width * 0.015}px, 120px)`,
+              fontWeight: 'bold', 
+              minWidth: `clamp(16px, ${toolbarState.width * 0.02}px, 240px)`,
+              color: '#666' 
+            }}>
               {penSize}
             </span>
           </div>
@@ -486,14 +558,30 @@ const ViewPage: React.FC = () => {
           {/* 구분선 */}
           <div style={{ 
             width: '1px', 
-            height: '25px', 
-            backgroundColor: 'rgba(204, 204, 204, 0.6)' 
+            height: `calc(${toolbarState.width * 0.04}px)`,
+            minHeight: '20px',
+            backgroundColor: 'rgba(204, 204, 204, 0.6)',
+            margin: '0 1px'
           }}></div>
 
           {/* 투명도 설정 */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
-            <label style={{ fontSize: '8px', fontWeight: 'bold', color: '#666' }}>투명도</label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center', 
+            gap: '0', 
+            flexWrap: 'wrap',
+            flex: '1 1 auto',
+            minWidth: 'fit-content',
+            position: 'relative',
+            zIndex: 2
+          }}>
+            <label style={{ 
+              fontSize: `clamp(8px, ${toolbarState.width * 0.012}px, 100px)`,
+              fontWeight: 'bold', 
+              color: '#666' 
+            }}>투명도</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0' }}>
               <input
                 type="range"
                 min="0.1"
@@ -501,9 +589,17 @@ const ViewPage: React.FC = () => {
                 step="0.1"
                 value={toolbarState.opacity}
                 onChange={(e) => setToolbarState(prev => ({ ...prev, opacity: Number(e.target.value) }))}
-                style={{ width: '50px' }}
+                style={{ 
+                  width: `calc(${toolbarState.width * 0.08}px)`,
+                  minWidth: '40px'
+                }}
               />
-              <span style={{ fontSize: '9px', fontWeight: 'bold', minWidth: '25px', color: '#666' }}>
+              <span style={{ 
+                fontSize: `clamp(8px, ${toolbarState.width * 0.012}px, 100px)`,
+                fontWeight: 'bold', 
+                minWidth: `clamp(20px, ${toolbarState.width * 0.03}px, 300px)`,
+                color: '#666' 
+              }}>
                 {Math.round(toolbarState.opacity * 100)}%
               </span>
             </div>

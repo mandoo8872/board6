@@ -33,6 +33,7 @@ interface CanvasWrapperProps {
   onResizeShape?: (shapeId: string, newSize: { width: number; height: number; x?: number; y?: number }) => void
   userId: string
   onUpdateShape?: (shapeId: string, property: string, value: any) => void
+  containerRef?: React.Ref<HTMLDivElement>
 }
 
 const CanvasWrapper: React.FC<CanvasWrapperProps> = ({
@@ -56,7 +57,8 @@ const CanvasWrapper: React.FC<CanvasWrapperProps> = ({
   onMoveShape,
   onResizeShape,
   userId,
-  onUpdateShape
+  onUpdateShape,
+  containerRef
 }) => {
   const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null)
   const [currentStrokeId, setCurrentStrokeId] = useState<string | null>(null)
@@ -314,8 +316,8 @@ const CanvasWrapper: React.FC<CanvasWrapperProps> = ({
 
   // 캔버스 컨테이너 스타일 계산
   const getContainerStyle = useCallback(() => {
-    const maxWidth = window.innerWidth - 40 // 좌우 여백
-    const maxHeight = window.innerHeight - 40 // 상하 여백
+    const maxWidth = window.innerWidth
+    const maxHeight = window.innerHeight
     
     const scaleX = maxWidth / CANVAS_WIDTH
     const scaleY = maxHeight / CANVAS_HEIGHT
@@ -399,30 +401,25 @@ const CanvasWrapper: React.FC<CanvasWrapperProps> = ({
   }, [tool])
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      width: '100vw',
-      height: '100vh',
-      backgroundColor: '#f5f5f5',
+    <div ref={containerRef} style={{
+      position: 'relative',
+      width: '100%',
+      height: '100%',
+      margin: 0,
+      padding: 0,
       overflow: 'hidden'
     }}>
       <div style={getContainerStyle()}>
-        {/* Base Layer: 그리드와 셰이프 */}
         <BaseLayer
           shapes={shapes}
           selectedId={selectedId}
           gridSize={gridSize}
           showGrid={showGrid}
         />
-        
-        {/* Draw Layer: 스트로크 */}
         <DrawLayer
           strokes={strokes}
+          currentStroke={currentStroke}
         />
-        
-        {/* Interaction Layer: 이벤트 처리 */}
         <InteractionLayer
           tool={tool}
           shapes={shapes}
@@ -444,7 +441,6 @@ const CanvasWrapper: React.FC<CanvasWrapperProps> = ({
           onResizeShape={handleShapeSync}
           setShapes={setShapes}
         />
-
         {selectedTextBox && (
           <div className="side-panel">
             <TextBoxPanel
