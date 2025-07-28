@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-touch-fullscreen" content="yes" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    <!-- Safari/iOS 터치/펜 입력 최적화 -->
+    <meta name="apple-mobile-web-app-title" content="Board7" />
+    <meta name="theme-color" content="#f7f5ed" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <title>Board7 - 공유 보드 시스템</title>
+    <style>
+      /* 터치 관련 전역 스타일 */
+      * {
+        -webkit-touch-callout: none !important;
+        -webkit-user-select: none !important;
+        -webkit-tap-highlight-color: transparent !important;
+        -ms-touch-action: manipulation !important;
+        touch-action: manipulation !important;
+        /* Safari/iOS 터치 최적화 */
+        -webkit-touch-callout: none !important;
+        -webkit-user-drag: none !important;
+        -webkit-tap-highlight-color: rgba(0,0,0,0) !important;
+      }
+      
+      /* 입력 필드는 선택 허용 */
+      input, textarea, [contenteditable="true"] {
+        -webkit-user-select: text !important;
+        user-select: text !important;
+      }
+      
+      /* 전체 화면에서 스크롤바 숨기기 */
+      ::-webkit-scrollbar {
+        display: none;
+      }
+      
+      body {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+        overscroll-behavior: none;
+        -webkit-overflow-scrolling: touch;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html> 

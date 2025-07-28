@@ -1,0 +1,119 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+  
+  /* 럭셔리 크림톤 배경 */
+  background-color: #f7f5ed;
+  background-image: 
+    radial-gradient(circle at 25% 25%, rgba(245, 240, 220, 0.4) 2px, transparent 2px),
+    radial-gradient(circle at 75% 75%, rgba(245, 240, 220, 0.3) 1px, transparent 1px),
+    linear-gradient(45deg, transparent 40%, rgba(248, 246, 238, 0.2) 40%, rgba(248, 246, 238, 0.2) 60%, transparent 60%),
+    linear-gradient(-45deg, transparent 40%, rgba(245, 240, 220, 0.15) 40%, rgba(245, 240, 220, 0.15) 60%, transparent 60%);
+  background-size: 80px 80px, 120px 120px, 200px 200px, 180px 180px;
+  background-position: 0 0, 40px 40px, 0 0, 90px 90px;
+}
+
+/* 사용자 선택 비활성화 (터치 인터페이스 최적화) */
+* {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 입력 필드는 선택 가능하도록 예외 처리 */
+input, textarea, [contenteditable="true"] {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
+/* 터치 액션 최적화 */
+.touch-none {
+  touch-action: none;
+}
+
+/* 캔버스 스무딩 비활성화 (선명한 픽셀 렌더링) */
+canvas {
+  image-rendering: -moz-crisp-edges;
+  image-rendering: -webkit-crisp-edges;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  /* Safari/iOS 캔버스 터치 최적화 */
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+  touch-action: none !important;
+  -webkit-user-drag: none !important;
+}
+
+/* 컨텍스트 메뉴 방지 */
+body {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+/* 캔버스 영역에서 모든 터치 제스처 방지 */
+[data-canvas-container] {
+  touch-action: none !important;
+  -webkit-touch-callout: none !important;
+}
+
+/* 텍스트 객체 편집 시에만 선택 허용 */
+.text-editing {
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  user-select: text !important;
+}
+
+/* 캔버스 포커스 상태 표시 */
+[data-canvas-container]:focus {
+  box-shadow: inset 0 0 0 2px rgba(59, 130, 246, 0.3) !important;
+  outline: none !important;
+}
+
+/* 캔버스 포커스 힌트 애니메이션 */
+@keyframes focus-hint {
+  0% { box-shadow: inset 0 0 0 2px rgba(59, 130, 246, 0.6); }
+  50% { box-shadow: inset 0 0 0 4px rgba(59, 130, 246, 0.2); }
+  100% { box-shadow: inset 0 0 0 2px rgba(59, 130, 246, 0.3); }
+}
+
+[data-canvas-container]:focus {
+  animation: focus-hint 0.8s ease-in-out;
+} 
