@@ -362,27 +362,40 @@ const DrawLayer: React.FC<DrawLayerProps> = () => {
     }
   }, [drawObjects, currentStroke, currentPressureStroke, isDrawing, penColor, penWidth, usePerfectFreehand, toScreenCoords, isLoading, getStrokeOptions, drawStrokeToCanvas]);
 
-  // 입력 타입 검증 함수
+  // 입력 타입 검증 함수 (iPhone Safari 호환성 개선)
   const isValidInputType = useCallback((e: React.PointerEvent) => {
-    // iOS/Safari에서만 엄격한 입력 제한 적용
+    // iPhone/iPad 구분하여 다른 로직 적용
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isIPhone = /iphone/.test(userAgent);
+    const isIPad = /ipad/.test(userAgent);
+    
     if (isWebkitRef.current) {
-      // 지우개는 펜과 터치 모두 허용하지만 펜 우선
-      if (currentTool === 'eraser') {
-        // 이미 펜이 활성화되어 있으면 터치 무시
-        if (activePointerRef.current !== null && e.pointerType === 'touch') {
+      // iPhone에서는 터치 입력 허용 (Apple Pencil 없이도 필기 가능)
+      if (isIPhone) {
+        // iPhone은 모든 입력 허용 (터치로도 필기 가능)
+        return true;
+      }
+      
+      // iPad에서만 엄격한 입력 제한 적용
+      if (isIPad) {
+        // 지우개는 펜과 터치 모두 허용하지만 펜 우선
+        if (currentTool === 'eraser') {
+          // 이미 펜이 활성화되어 있으면 터치 무시
+          if (activePointerRef.current !== null && e.pointerType === 'touch') {
+            if (import.meta.env.DEV) {
+              console.log(`🚫 iPad: Rejecting ${e.pointerType} input (pen already active)`);
+            }
+            return false;
+          }
+        }
+        
+        // 펜 도구의 경우: 펜 입력이 우선이지만 터치도 허용 (iPad 호환성)
+        if (currentTool === 'pen' && e.pointerType !== 'pen' && e.pointerType !== 'touch' && e.pointerType !== 'mouse') {
           if (import.meta.env.DEV) {
-            console.log(`🚫 Rejecting ${e.pointerType} input (pen already active)`);
+            console.log(`🚫 iPad: Rejecting ${e.pointerType} input for pen tool`);
           }
           return false;
         }
-      }
-      
-      // 펜 도구의 경우: 펜 입력이 우선이지만 마우스도 허용 (호환성)
-      if (currentTool === 'pen' && e.pointerType !== 'pen' && e.pointerType !== 'mouse') {
-        if (import.meta.env.DEV) {
-          console.log(`🚫 Rejecting ${e.pointerType} input for pen tool on iOS/Safari`);
-        }
-        return false;
       }
     }
     
@@ -392,17 +405,24 @@ const DrawLayer: React.FC<DrawLayerProps> = () => {
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if (currentTool !== 'pen' && currentTool !== 'eraser') return;
     
-    // 웹킷에서 입력 타입 검증
+    // 웹킷에서 입력 타입 검증 (iPhone에서는 더 관대하게)
     if (!isValidInputType(e)) {
       return;
     }
     
-    // 이미 다른 포인터가 활성화된 경우 무시
-    if (activePointerRef.current !== null && activePointerRef.current !== e.pointerId) {
+    // iPhone에서는 더 관대한 포인터 관리 (끊김 방지)
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isIPhone = /iphone/.test(userAgent);
+    
+    // iPhone이 아닌 경우에만 엄격한 포인터 ID 체크
+    if (!isIPhone && activePointerRef.current !== null && activePointerRef.current !== e.pointerId) {
       return;
     }
     
-    e.preventDefault();
+    // iPhone에서는 preventDefault를 조건부로 적용
+    if (!isIPhone || e.pointerType !== 'touch') {
+      e.preventDefault();
+    }
     e.stopPropagation();
     
     // 활성 포인터 설정
@@ -425,17 +445,25 @@ const DrawLayer: React.FC<DrawLayerProps> = () => {
     if (currentTool === 'pen') {
       startStroke();
       
-      // 압력과 기울기 데이터 추출
-      const pressure = e.pressure || 0.5;
+      // 압력과 기울기 데이터 추출 (iPhone에서는 기본값 사용)
+      const pressure = e.pressure || (isIPhone ? 0.7 : 0.5); // iPhone 터치는 약간 더 강하게
       const tiltX = e.tiltX || 0;
       const tiltY = e.tiltY || 0;
       
       addPoint(coords.x, coords.y, pressure, tiltX, tiltY);
       renderAll();
+      
+      if (import.meta.env.DEV && isIPhone) {
+        console.log(`📱 iPhone: Pen stroke started with ${e.pointerType} at (${coords.x}, ${coords.y})`);
+      }
     } else if (currentTool === 'eraser') {
       // 지우개 드래그 시작
       isErasingRef.current = true;
       eraseAtPoint(coords.x, coords.y);
+      
+      if (import.meta.env.DEV && isIPhone) {
+        console.log(`📱 iPhone: Eraser started with ${e.pointerType} at (${coords.x}, ${coords.y})`);
+      }
     }
     
     if (import.meta.env.DEV) {
@@ -444,8 +472,12 @@ const DrawLayer: React.FC<DrawLayerProps> = () => {
   }, [currentTool, getCanvasCoordinates, startStroke, addPoint, renderAll, eraseAtPoint, isValidInputType]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    // 활성 포인터가 아니면 무시
-    if (activePointerRef.current !== e.pointerId) {
+    // iPhone에서는 더 관대한 포인터 관리 (끊김 방지)
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isIPhone = /iphone/.test(userAgent);
+    
+    // iPhone이 아닌 경우에만 엄격한 포인터 ID 체크
+    if (!isIPhone && activePointerRef.current !== e.pointerId) {
       return;
     }
     
@@ -471,8 +503,12 @@ const DrawLayer: React.FC<DrawLayerProps> = () => {
   }, [isDrawing, currentTool, getCanvasCoordinates, addPoint, renderAll, eraseAtPoint]);
 
   const handlePointerUp = useCallback(async (e: React.PointerEvent) => {
-    // 활성 포인터가 아니면 무시
-    if (activePointerRef.current !== e.pointerId) {
+    // iPhone에서는 더 관대한 포인터 관리
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isIPhone = /iphone/.test(userAgent);
+    
+    // iPhone이 아닌 경우에만 엄격한 포인터 ID 체크
+    if (!isIPhone && activePointerRef.current !== e.pointerId) {
       return;
     }
     

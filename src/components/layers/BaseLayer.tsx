@@ -359,15 +359,22 @@ const BaseLayer: React.FC<BaseLayerProps> = ({ isViewPage = false }) => {
     }
   }, [editingObjectId, selectedObjectId, isViewPage, handleDuplicateObject, handleDeleteObject, handleClipboardPaste]);
 
-  // 단일 포인터 다운 핸들러 - iPad Safari 호환 전용 (터치, 펜, 마우스 통합)
+  // 단일 포인터 다운 핸들러 - iPhone/iPad Safari 호환 (터치, 펜, 마우스 통합)
   const handlePointerDown = useCallback((e: React.PointerEvent, id: string) => {
-    // iPad Safari에서 ghost click 방지를 위한 이벤트 타임스탬프 기록
+    // iPhone/iPad Safari에서 ghost click 방지를 위한 이벤트 타임스탬프 기록
     lastPointerEventTimeRef.current = e.timeStamp;
+    
+    // iPhone에서는 더 관대한 이벤트 처리 (끊김 방지)
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isIPhone = /iphone/.test(userAgent);
     
     // 이벤트 버블링 방지 (상위 레이어로 전파 차단)
     e.stopPropagation();
-    // iPad Safari에서 touchAction: 'none'과 함께 사용하여 기본 동작 방지
-    e.preventDefault();
+    
+    // iPhone에서는 preventDefault를 조건부로 적용 (호환성 개선)
+    if (!isIPhone || e.pointerType !== 'touch') {
+      e.preventDefault();
+    }
 
     if (editingObjectId) {
       finishInlineEdit();
@@ -386,11 +393,24 @@ const BaseLayer: React.FC<BaseLayerProps> = ({ isViewPage = false }) => {
       return;
     }
 
-    // 포인터 캡처 설정 (iPad에서 빠른 드래그 시 손가락에서 떨어지지 않도록)
-    try {
-      e.currentTarget.setPointerCapture(e.pointerId);
-    } catch (error) {
-      // 포인터 캡처 실패는 무시 (일부 브라우저에서 지원하지 않음)
+    // iPhone Safari에서 포인터 캡처 최적화
+    if (isIPhone) {
+      // iPhone에서는 포인터 캡처를 더 조심스럽게 적용
+      setTimeout(() => {
+        try {
+          e.currentTarget.setPointerCapture(e.pointerId);
+        } catch (error) {
+          // iPhone에서 포인터 캡처 실패는 무시하고 계속 진행
+          console.debug('iPhone pointer capture failed, continuing without capture');
+        }
+      }, 0);
+    } else {
+      // iPad/데스크톱에서는 즉시 포인터 캡처
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch (error) {
+        // 포인터 캡처 실패는 무시 (일부 브라우저에서 지원하지 않음)
+      }
     }
 
     const rect = e.currentTarget.getBoundingClientRect();
@@ -403,6 +423,10 @@ const BaseLayer: React.FC<BaseLayerProps> = ({ isViewPage = false }) => {
       offset: { x, y },
       currentPosition: { x: obj.x, y: obj.y }
     });
+    
+    if (import.meta.env.DEV && isIPhone) {
+      console.log(`📱 iPhone: Object drag started for ${id} with ${e.pointerType}`);
+    }
   }, [editingObjectId, finishInlineEdit, textObjects, imageObjects, setSelectedObjectId, setHoveredObjectId]);
 
   // 크기조절 핸들 포인터 다운 - iPad Safari 호환 (터치, 펜, 마우스 통합)
@@ -908,8 +932,9 @@ const BaseLayer: React.FC<BaseLayerProps> = ({ isViewPage = false }) => {
       // 컨텍스트 메뉴 방지
       onContextMenu={handleContextMenu}
       style={{
-        touchAction: 'none', // iPad Safari에서 터치 스크롤 및 줌 방지
-        pointerEvents: (currentTool === 'pen' || currentTool === 'eraser') ? 'none' : 'auto',
+        touchAction: 'none', // iOS Safari에서 터치 스크롤 및 줌 방지
+        // iPhone/iPad에서 포인터 이벤트 처리 개선: 펜/지우개 도구 사용 시에도 객체 조작 가능
+        pointerEvents: 'auto', // 모든 도구에서 포인터 이벤트 허용
         outline: 'none' // 포커스 아웃라인 제거 (시각적으로 깔끔하게)
       }}
     >
