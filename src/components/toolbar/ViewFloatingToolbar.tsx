@@ -13,7 +13,7 @@ interface Size {
 }
 
 const ViewFloatingToolbar: React.FC = () => {
-  const { currentTool, setCurrentTool, fitToWindow } = useEditorStore();
+  const { currentTool, setCurrentTool, fitToWindow, setSelectedObjectId } = useEditorStore();
   const { addTextObject, settings } = useAdminConfigStore();
   const { penColor, penWidth, setPenColor, setPenWidth } = useDrawStore();
   
@@ -317,11 +317,26 @@ const ViewFloatingToolbar: React.FC = () => {
       lastModified: Date.now()
     };
 
-    await addTextObject(newCheckboxObject);
-    
-    setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('activateVirtualKeyboard'));
-    }, 100);
+    try {
+      // 체크박스 생성하고 새로 생성된 ID 받기
+      const newObjectId = await addTextObject(newCheckboxObject);
+      
+      // 새로 생성된 체크박스 자동 선택
+      setSelectedObjectId(newObjectId);
+      
+      // 가상 키보드 활성화 (약간의 지연 후)
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('activateVirtualKeyboard', {
+          detail: { objectId: newObjectId }
+        }));
+      }, 100);
+      
+      if (import.meta.env.DEV) {
+        console.log(`✅ 체크박스 생성 및 선택 완료: ${newObjectId}`);
+      }
+    } catch (error) {
+      console.error('❌ 체크박스 생성 실패:', error);
+    }
   };
 
   const handleColorSelect = (color: string) => {

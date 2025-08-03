@@ -20,12 +20,12 @@ export interface AdminConfigStore {
   cleanupFirebaseListeners: () => void;
   
   // TextObject 관리
-  addTextObject: (obj: Omit<TextObject, 'id'>) => Promise<void>;
+  addTextObject: (obj: Omit<TextObject, 'id'>) => Promise<string>;
   updateTextObject: (id: string, updates: Partial<TextObject>) => Promise<void>;
   deleteTextObject: (id: string) => Promise<void>;
   
   // ImageObject 관리
-  addImageObject: (obj: Omit<ImageObject, 'id'>) => Promise<void>;
+  addImageObject: (obj: Omit<ImageObject, 'id'>) => Promise<string>;
   updateImageObject: (id: string, updates: Partial<ImageObject>) => Promise<void>;
   deleteImageObject: (id: string) => Promise<void>;
   
@@ -188,6 +188,7 @@ export const useAdminConfigStore = create<AdminConfigStore>((set, get) => {
         modifiedBy: sessionId
       };
       await firebaseSet(newRef, newObj);
+      return newRef.key!; // 새로 생성된 객체의 ID 반환
     },
     
     updateTextObject: async (id, updates) => {
@@ -215,6 +216,7 @@ export const useAdminConfigStore = create<AdminConfigStore>((set, get) => {
         modifiedBy: sessionId
       };
       await firebaseSet(newRef, newObj);
+      return newRef.key!; // 새로 생성된 객체의 ID 반환
     },
     
     updateImageObject: async (id, updates) => {
