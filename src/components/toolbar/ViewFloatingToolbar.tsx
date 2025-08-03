@@ -206,7 +206,8 @@ const ViewFloatingToolbar: React.FC = () => {
     return () => window.removeEventListener('resize', handleWindowResize);
   }, [position, size]);
 
-  const handleToolbarMouseDown = (e: React.MouseEvent) => {
+  // 통합 포인터 툴바 드래그 핸들러 (iPhone/iPad Safari 호환)
+  const handleToolbarPointerDown = (e: React.PointerEvent) => {
     // 버튼이나 리사이즈 핸들이 아닌 경우에만 드래그 시작
     const target = e.target as HTMLElement;
     if (target.closest('button') || target.closest('.resize-handle')) return;
@@ -214,6 +215,14 @@ const ViewFloatingToolbar: React.FC = () => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(true);
+    
+    // 포인터 캡처로 드래그 중 포인터가 벗어나도 추적 가능
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch (error) {
+      // 포인터 캡처 실패는 무시 (일부 브라우저에서 지원하지 않음)
+    }
+    
     const rect = toolbarRef.current?.getBoundingClientRect();
     if (rect) {
       setDragOffset({
@@ -221,36 +230,28 @@ const ViewFloatingToolbar: React.FC = () => {
         y: e.clientY - rect.top
       });
     }
-  };
-
-  const handleToolbarTouchStart = (e: React.TouchEvent) => {
-    // 버튼이나 리사이즈 핸들이 아닌 경우에만 드래그 시작
-    const target = e.target as HTMLElement;
-    if (target.closest('button') || target.closest('.resize-handle')) return;
     
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-    const rect = toolbarRef.current?.getBoundingClientRect();
-    if (rect && e.touches.length === 1) {
-      const touch = e.touches[0];
-      setDragOffset({
-        x: touch.clientX - rect.left,
-        y: touch.clientY - rect.top
-      });
+    if (import.meta.env.DEV) {
+      console.log(`🔧 Floating Toolbar drag started with ${e.pointerType}`);
     }
   };
 
-  const handleResizeStart = (e: React.MouseEvent) => {
+  // 통합 포인터 리사이즈 핸들러 (iPhone/iPad Safari 호환)
+  const handleResizePointerStart = (e: React.PointerEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsResizing(true);
-  };
-
-  const handleResizeTouchStart = (e: React.TouchEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsResizing(true);
+    
+    // 포인터 캡처로 리사이즈 중 포인터가 벗어나도 추적 가능
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch (error) {
+      // 포인터 캡처 실패는 무시 (일부 브라우저에서 지원하지 않음)
+    }
+    
+    if (import.meta.env.DEV) {
+      console.log(`🔧 Floating Toolbar resize started with ${e.pointerType}`);
+    }
   };
 
   const handleToolChange = (tool: Tool) => {
@@ -349,10 +350,10 @@ const ViewFloatingToolbar: React.FC = () => {
         height: size.height,
         zIndex: 9999,
         minWidth: 120,
-        minHeight: 80
+        minHeight: 80,
+        touchAction: 'none' // iOS Safari에서 터치 스크롤 방지
       }}
-      onMouseDown={handleToolbarMouseDown}
-      onTouchStart={handleToolbarTouchStart}
+      onPointerDown={handleToolbarPointerDown}
       onClick={(e) => e.stopPropagation()}
     >
       {/* 툴바 내용 */}
@@ -516,8 +517,10 @@ const ViewFloatingToolbar: React.FC = () => {
       {/* 리사이즈 핸들 */}
       <div
         className="resize-handle absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
-        onMouseDown={handleResizeStart}
-        onTouchStart={handleResizeTouchStart}
+        style={{
+          touchAction: 'none' // iOS Safari에서 터치 스크롤 방지
+        }}
+        onPointerDown={handleResizePointerStart}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="absolute bottom-1 right-1 w-2 h-2 border-r-2 border-b-2 border-gray-400"></div>

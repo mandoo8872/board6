@@ -290,10 +290,19 @@ const ViewVirtualKeyboard: React.FC = () => {
     return () => window.removeEventListener('resize', handleWindowResize);
   }, [position, size]);
 
-  const handleHeaderMouseDown = useCallback((e: React.MouseEvent) => {
+  // 통합 포인터 드래그 핸들러 (iPhone/iPad Safari 호환)
+  const handleHeaderPointerDown = useCallback((e: React.PointerEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(true);
+    
+    // 포인터 캡처로 드래그 중 포인터가 벗어나도 추적 가능
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch (error) {
+      // 포인터 캡처 실패는 무시 (일부 브라우저에서 지원하지 않음)
+    }
+    
     const rect = keyboardRef.current?.getBoundingClientRect();
     if (rect) {
       setDragOffset({
@@ -301,32 +310,28 @@ const ViewVirtualKeyboard: React.FC = () => {
         y: e.clientY - rect.top
       });
     }
-  }, []);
-
-  const handleHeaderTouchStart = useCallback((e: React.TouchEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-    const rect = keyboardRef.current?.getBoundingClientRect();
-    if (rect && e.touches.length === 1) {
-      const touch = e.touches[0];
-      setDragOffset({
-        x: touch.clientX - rect.left,
-        y: touch.clientY - rect.top
-      });
+    
+    if (import.meta.env.DEV) {
+      console.log(`🎹 Virtual Keyboard drag started with ${e.pointerType}`);
     }
   }, []);
 
-  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+  // 통합 포인터 리사이즈 핸들러 (iPhone/iPad Safari 호환)
+  const handleResizePointerStart = useCallback((e: React.PointerEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsResizing(true);
-  }, []);
-
-  const handleResizeTouchStart = useCallback((e: React.TouchEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsResizing(true);
+    
+    // 포인터 캡처로 리사이즈 중 포인터가 벗어나도 추적 가능
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch (error) {
+      // 포인터 캡처 실패는 무시 (일부 브라우저에서 지원하지 않음)
+    }
+    
+    if (import.meta.env.DEV) {
+      console.log(`🎹 Virtual Keyboard resize started with ${e.pointerType}`);
+    }
   }, []);
 
   const handleKeyPress = (e: React.MouseEvent, key: string) => {
@@ -577,19 +582,17 @@ const ViewVirtualKeyboard: React.FC = () => {
           }
         }
       }}
-      onPointerDown={(e) => e.stopPropagation()} // 터치 이벤트도 방지
-      onMouseDown={(e) => e.stopPropagation()} // 마우스 다운 이벤트도 방지
+      onPointerDown={(e) => e.stopPropagation()} // 포인터 이벤트 버블링 방지
     >
       {/* 드래그 핸들 */}
       <div 
         className="bg-gray-700 px-3 py-2 rounded-t-lg border-b border-gray-600"
         style={{
-          cursor: isDragging ? 'grabbing' : 'grab'
+          cursor: isDragging ? 'grabbing' : 'grab',
+          touchAction: 'none' // iOS Safari에서 터치 스크롤 방지
         }}
-        onMouseDown={handleHeaderMouseDown}
-        onTouchStart={handleHeaderTouchStart}
+        onPointerDown={handleHeaderPointerDown}
         onClick={(e) => e.stopPropagation()}
-        onPointerDown={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-white">가상 키보드</span>
@@ -797,15 +800,15 @@ const ViewVirtualKeyboard: React.FC = () => {
       {/* 리사이즈 핸들 */}
       <div
         className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
-        onMouseDown={handleResizeStart}
-        onTouchStart={handleResizeTouchStart}
+        style={{
+          touchAction: 'none' // iOS Safari에서 터치 스크롤 방지
+        }}
+        onPointerDown={handleResizePointerStart}
         onClick={(e) => e.stopPropagation()}
-        onPointerDown={(e) => e.stopPropagation()}
       >
         <div className="absolute bottom-1 right-1 w-2 h-2 border-r-2 border-b-2 border-gray-400"
           onClick={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.stopPropagation()}
         ></div>
       </div>
     </div>
