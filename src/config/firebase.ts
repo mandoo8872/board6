@@ -2,8 +2,20 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
 import { getAnalytics } from "firebase/analytics";
 
+// Firebase 설정 인터페이스 (measurementId는 선택적)
+interface FirebaseConfig {
+  apiKey: string;
+  authDomain: string;
+  databaseURL: string;
+  projectId: string;
+  storageBucket: string;
+  messagingSenderId: string;
+  appId: string;
+  measurementId?: string; // 선택적 속성
+}
+
 // 개발환경용 Firebase 설정 (board6-dev)
-const developmentConfig = {
+const developmentConfig: FirebaseConfig = {
   apiKey: "AIzaSyCy37FNEfuORjN0AxpjqtwdKoQzGqfG8Ww",
   authDomain: "board6-dev.firebaseapp.com",
   databaseURL: "https://board6-dev-default-rtdb.asia-southeast1.firebasedatabase.app",
@@ -15,7 +27,7 @@ const developmentConfig = {
 };
 
 // 배포환경용 Firebase 설정 (board6-a2c5a)
-const productionConfig = {
+const productionConfig: FirebaseConfig = {
   apiKey: "AIzaSyBF1sBC8tegqpQzlhZDkfRyCkG1N-RqHZM",
   authDomain: "board6-a2c5a.firebaseapp.com",
   databaseURL: "https://board6-a2c5a-default-rtdb.asia-southeast1.firebasedatabase.app",
@@ -27,7 +39,7 @@ const productionConfig = {
 };
 
 // 환경에 따른 Firebase 설정 선택
-const getFirebaseConfig = () => {
+const getFirebaseConfig = (): FirebaseConfig => {
   const isDevelopment = import.meta.env.MODE === 'development';
   
   if (isDevelopment) {
