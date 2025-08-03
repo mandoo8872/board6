@@ -4,9 +4,13 @@
   "description": "백업/개발/테스트용 공유 보드 시스템",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
+    "dev": "vite --mode development",
+    "build": "tsc && vite build --mode production",
+    "build:dev": "tsc && vite build --mode development",
+    "build:prod": "tsc && vite build --mode production",
     "preview": "vite preview",
+    "preview:dev": "vite preview --mode development",
+    "preview:prod": "vite preview --mode production",
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
   },
   "dependencies": {

@@ -191,21 +191,29 @@ const Canvas: React.FC<CanvasProps> = ({ isViewPage = false }) => {
   // 스케일에 따른 그리드 표시 여부 결정
   // const shouldShowGrid = gridEnabled && finalScale > 0.3; // 현재 사용하지 않음
 
-  // 컨텍스트 메뉴 방지 (우클릭, 터치 길게 누르기)
+  // 컨텍스트 메뉴 방지 (iPad Safari 호환)
   const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+    try {
+      e.preventDefault();
+      e.stopPropagation();
+    } catch (error) {
+      // passive event listener에서 실패 시 무시
+      console.debug('preventDefault failed in Canvas context menu:', error);
+    }
     return false;
   };
 
-  // 터치 길게 누르기 방지
+  // 터치 길게 누르기 방지 (iPad Safari 최적화)
   const handleTouchStart = (e: React.TouchEvent) => {
-    // 길게 누르기 타이머 설정 (브라우저의 기본 컨텍스트 메뉴보다 빠르게)
+    // iPad에서 길게 누르기 시 컨텍스트 메뉴 방지
     if (e.touches.length === 1) {
       const longPressTimer = setTimeout(() => {
-        // 길게 누르기가 감지되면 이벤트 취소
-        e.preventDefault();
-      }, 300); // 300ms 후 취소 (브라우저 기본값보다 빠름)
+        try {
+          e.preventDefault();
+        } catch (error) {
+          // passive event에서 실패 시 무시
+        }
+      }, 200); // iPad Safari 최적화: 200ms로 단축
       
       // 터치가 끝나거나 이동하면 타이머 취소
       const clearTimer = () => {

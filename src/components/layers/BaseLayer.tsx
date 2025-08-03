@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { useAdminConfigStore } from '../../store/adminConfigStore';
 import { useEditorStore } from '../../store/editorStore';
 import { useCheckboxStore } from '../../store/checkboxStore';
@@ -12,6 +12,10 @@ interface BaseLayerProps {
 }
 
 const BaseLayer: React.FC<BaseLayerProps> = ({ isViewPage = false }) => {
+  // Safari/iOS 감지를 위한 ref (iPad Safari 터치 이벤트 최적화)
+  const isSafariRef = useRef<boolean>(false);
+  const lastPointerEventTimeRef = useRef<number>(0);
+  
   const { 
     textObjects, 
     imageObjects,
@@ -38,6 +42,14 @@ const BaseLayer: React.FC<BaseLayerProps> = ({ isViewPage = false }) => {
     checkedBackgroundOpacity,
     uncheckedBackgroundOpacity
   } = useCheckboxStore();
+  
+  // Safari/iOS 감지 (iPad Safari 호환성을 위한 최소한의 조건부 로직)
+  React.useEffect(() => {
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isIOS = /iphone|ipad|ipod/.test(userAgent);
+    const isSafari = /safari/.test(userAgent) && !/chrome/.test(userAgent);
+    isSafariRef.current = isIOS || isSafari;
+  }, []);
   
   // 셀 다중선택 관리
   // const {
@@ -347,10 +359,15 @@ const BaseLayer: React.FC<BaseLayerProps> = ({ isViewPage = false }) => {
     }
   }, [editingObjectId, selectedObjectId, isViewPage, handleDuplicateObject, handleDeleteObject, handleClipboardPaste]);
 
-  // 포인터 다운 핸들러 (드래그 시작) - 마우스, 터치, 펜 모두 지원
+  // 단일 포인터 다운 핸들러 - iPad Safari 호환 전용 (터치, 펜, 마우스 통합)
   const handlePointerDown = useCallback((e: React.PointerEvent, id: string) => {
-    // CSS touchAction: 'none'을 사용하므로 preventDefault() 불필요
+    // iPad Safari에서 ghost click 방지를 위한 이벤트 타임스탬프 기록
+    lastPointerEventTimeRef.current = e.timeStamp;
+    
+    // 이벤트 버블링 방지 (상위 레이어로 전파 차단)
     e.stopPropagation();
+    // iPad Safari에서 touchAction: 'none'과 함께 사용하여 기본 동작 방지
+    e.preventDefault();
 
     if (editingObjectId) {
       finishInlineEdit();
@@ -369,11 +386,11 @@ const BaseLayer: React.FC<BaseLayerProps> = ({ isViewPage = false }) => {
       return;
     }
 
-    // 포인터 캡처 설정 (빠른 드래그 시에도 마우스에서 떨어지지 않도록)
+    // 포인터 캡처 설정 (iPad에서 빠른 드래그 시 손가락에서 떨어지지 않도록)
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
     } catch (error) {
-      // 포인터 캡처 실패는 무시
+      // 포인터 캡처 실패는 무시 (일부 브라우저에서 지원하지 않음)
     }
 
     const rect = e.currentTarget.getBoundingClientRect();
@@ -388,15 +405,11 @@ const BaseLayer: React.FC<BaseLayerProps> = ({ isViewPage = false }) => {
     });
   }, [editingObjectId, finishInlineEdit, textObjects, imageObjects, setSelectedObjectId, setHoveredObjectId]);
 
-  // 마우스 다운 핸들러 (호환성 유지)
-  const handleMouseDown = useCallback((e: React.MouseEvent, id: string) => {
-    handlePointerDown(e as any, id);
-  }, [handlePointerDown]);
-
-  // 크기조절 핸들 포인터 다운 - 마우스, 터치, 펜 모두 지원
+  // 크기조절 핸들 포인터 다운 - iPad Safari 호환 (터치, 펜, 마우스 통합)
   const handleResizePointerDown = useCallback((e: React.PointerEvent, handle: string, objectId: string) => {
-    // CSS touchAction: 'none'을 사용하므로 preventDefault() 불필요
+    // 이벤트 버블링 방지 및 기본 동작 방지 (iPad Safari 호환)
     e.stopPropagation();
+    e.preventDefault();
 
     const obj = textObjects.find(o => o.id === objectId) || imageObjects.find(o => o.id === objectId);
     if (!obj) return;
@@ -416,12 +429,7 @@ const BaseLayer: React.FC<BaseLayerProps> = ({ isViewPage = false }) => {
     });
   }, [textObjects, imageObjects]);
 
-  // 크기조절 핸들 마우스 다운 (호환성 유지)
-  const handleResizeMouseDown = useCallback((e: React.MouseEvent, handle: string, objectId: string) => {
-    handleResizePointerDown(e as any, handle, objectId);
-  }, [handleResizePointerDown]);
-
-  // 포인터 이동 핸들러 (드래그 중) - 마우스, 터치, 펜 모두 지원
+  // 통합 포인터 이동 핸들러 (드래그 및 리사이즈) - iPad Safari 최적화
   const handlePointerMove = (e: React.PointerEvent) => {
     // 드래그 처리
     if (dragState.isDragging && dragState.draggedObjectId) {
@@ -455,11 +463,6 @@ const BaseLayer: React.FC<BaseLayerProps> = ({ isViewPage = false }) => {
       // 설정이 로드되지 않았을 때 기본값 제공
       const gridSnapEnabled = settings?.admin?.gridSnapEnabled ?? false;
       const gridSize = settings?.admin?.gridSize ?? 32;
-      
-      // 디버깅용 로그 (뷰페이지에서만)
-      if (isViewPage) {
-        console.log('Grid Snap Debug:', { gridSnapEnabled, gridSize, settings: settings?.admin });
-      }
       
       if (gridSnapEnabled) {
         finalPosition = snapPositionToGrid(newPosition.x, newPosition.y, gridSize);
@@ -595,11 +598,6 @@ const BaseLayer: React.FC<BaseLayerProps> = ({ isViewPage = false }) => {
       const gridSnapEnabled = settings?.admin?.gridSnapEnabled ?? false;
       const gridSize = settings?.admin?.gridSize ?? 32;
       
-      // 디버깅용 로그 (뷰페이지에서만)
-      if (isViewPage) {
-        console.log('Grid Snap Resize Debug:', { gridSnapEnabled, gridSize, settings: settings?.admin });
-      }
-      
       if (gridSnapEnabled) {
         finalPosition = snapPositionToGrid(newX, newY, gridSize);
         finalSize = snapSizeToGrid(newWidth, newHeight, gridSize);
@@ -617,7 +615,7 @@ const BaseLayer: React.FC<BaseLayerProps> = ({ isViewPage = false }) => {
     }
   };
 
-  // 포인터 업 핸들러
+  // 통합 포인터 업 핸들러 - iPad Safari 최적화
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
     // 포인터 캡처 해제
     try {
@@ -700,88 +698,13 @@ const BaseLayer: React.FC<BaseLayerProps> = ({ isViewPage = false }) => {
     }
   }, [dragState, resizeState, textObjects, imageObjects, updateTextObject, updateImageObject]);
 
-  // 마우스 업 핸들러 (호환성 유지)
-  const handleMouseUp = useCallback(() => {
-    // 포인터 업과 동일한 처리를 하되, 포인터 캡처는 사용하지 않음
-    if (dragState.isDragging && dragState.draggedObjectId) {
-      const finalPosition = dragState.currentPosition;
-      
-      // 텍스트 객체인지 이미지 객체인지 확인
-      const textObj = textObjects.find(obj => obj.id === dragState.draggedObjectId);
-      const imageObj = imageObjects.find(obj => obj.id === dragState.draggedObjectId);
-      
-      if (textObj) {
-        updateTextObject(dragState.draggedObjectId, {
-          x: finalPosition.x,
-          y: finalPosition.y
-        }).catch((error: any) => {
-          console.error('Failed to update text object position:', error);
-        });
-      } else if (imageObj) {
-        updateImageObject(dragState.draggedObjectId, {
-          x: finalPosition.x,
-          y: finalPosition.y
-        }).catch((error: any) => {
-          console.error('Failed to update image object position:', error);
-        });
-      }
-
-      setDragState({
-        isDragging: false,
-        draggedObjectId: null,
-        offset: { x: 0, y: 0 },
-        currentPosition: { x: 0, y: 0 }
-      });
-    }
-
-    if (resizeState.isResizing && resizeState.resizedObjectId) {
-      const finalSize = resizeState.currentSize;
-      const finalPosition = resizeState.currentPosition;
-      
-      if (finalSize && finalPosition) {
-        // 텍스트 객체인지 이미지 객체인지 확인
-        const textObj = textObjects.find(obj => obj.id === resizeState.resizedObjectId);
-        const imageObj = imageObjects.find(obj => obj.id === resizeState.resizedObjectId);
-        
-        if (textObj) {
-          updateTextObject(resizeState.resizedObjectId, {
-            x: finalPosition.x,
-            y: finalPosition.y,
-            width: finalSize.width,
-            height: finalSize.height
-          }).catch((error: any) => {
-            console.error('Failed to update text object size/position:', error);
-          });
-        } else if (imageObj) {
-          updateImageObject(resizeState.resizedObjectId, {
-            x: finalPosition.x,
-            y: finalPosition.y,
-            width: finalSize.width,
-            height: finalSize.height
-          }).catch((error: any) => {
-            console.error('Failed to update image object size/position:', error);
-          });
-        }
-      }
-
-      setResizeState({
-        isResizing: false,
-        resizedObjectId: null,
-        resizeHandle: '',
-        startPosition: { x: 0, y: 0 },
-        startSize: { width: 0, height: 0 },
-        startObjectPosition: { x: 0, y: 0 }
-      });
-    }
-  }, [dragState, resizeState, textObjects, imageObjects, updateTextObject, updateImageObject]);
-
-  // 마우스 이동 핸들러 (호환성 유지)
-  const handleMouseMove = (e: React.MouseEvent) => {
-    handlePointerMove(e as any);
-  };
-
-  // 텍스트 객체 클릭 핸들러 (백업용)
+  // 텍스트 객체 클릭 핸들러 (iPad Safari 호환용 - ghost click 방지)
   const handleObjectClick = useCallback((e: React.MouseEvent, id: string) => {
+    // iPad Safari에서 ghost click 방지 (포인터 이벤트 이후 300ms 내의 클릭은 무시)
+    if (isSafariRef.current && e.timeStamp - lastPointerEventTimeRef.current < 300) {
+      return;
+    }
+    
     // 셀 객체인지 확인
     const textObj = textObjects.find(obj => obj.id === id);
     const isCell = textObj?.cellType === 'cell';
@@ -803,14 +726,14 @@ const BaseLayer: React.FC<BaseLayerProps> = ({ isViewPage = false }) => {
 
   // 캔버스 빈 공간 클릭 핸들러 (선택 해제 및 드래그 선택)
   const handleCanvasClick = useCallback((e: React.MouseEvent) => {
+    // iPad Safari ghost click 방지
+    if (isSafariRef.current && e.timeStamp - lastPointerEventTimeRef.current < 300) {
+      return;
+    }
+    
     // 캔버스에 포커스 설정 (키보드 단축키 활성화용)
     const canvasContainer = e.currentTarget as HTMLElement;
     canvasContainer.focus();
-    
-    // 처음 캔버스를 클릭했을 때 사용법 안내 (개발 환경에서만)
-    if (import.meta.env.DEV) {
-      console.log('💡 캔버스 포커스 활성화: Ctrl+V로 이미지 붙여넣기 가능');
-    }
     
     // 인라인 편집 중이면 편집 종료
     if (editingObjectId) {
@@ -836,8 +759,6 @@ const BaseLayer: React.FC<BaseLayerProps> = ({ isViewPage = false }) => {
       }
     }
   }, [editingObjectId, finishInlineEdit, setSelectedObjectId, isViewPage, currentTool]);
-
-
 
   // 개선된 텍스트 박스 클릭 핸들러
   const handleTextBoxClick = (obj: TextObject, e: React.MouseEvent) => {
@@ -980,17 +901,14 @@ const BaseLayer: React.FC<BaseLayerProps> = ({ isViewPage = false }) => {
       tabIndex={0}  // 포커스 가능하게 설정
       onClick={handleCanvasClick}
       onKeyDown={handleCanvasKeyDown}  // 캔버스 포커스 시에만 키보드 이벤트 처리
-      // 포인터 이벤트 (터치, 펜, 마우스 모두 지원)
+      // 통합 포인터 이벤트 (iPad Safari 최적화)
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerUp}
-      // 마우스 이벤트 (호환성 유지)
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseUp}
       // 컨텍스트 메뉴 방지
       onContextMenu={handleContextMenu}
       style={{
-        touchAction: 'none', // 터치 스크롤 및 줌 방지
+        touchAction: 'none', // iPad Safari에서 터치 스크롤 및 줌 방지
         pointerEvents: (currentTool === 'pen' || currentTool === 'eraser') ? 'none' : 'auto',
         outline: 'none' // 포커스 아웃라인 제거 (시각적으로 깔끔하게)
       }}
@@ -1065,6 +983,7 @@ const BaseLayer: React.FC<BaseLayerProps> = ({ isViewPage = false }) => {
                   border: `${boxStyle.borderWidth}px solid ${boxStyle.borderColor}`,
                   borderRadius: `${boxStyle.borderRadius}px`,
                   transition: isDragging ? 'none' : 'all 0.1s ease',
+                  // iPad Safari 최적화: 펜/지우개 도구 사용 시 포인터 이벤트 비활성화
                   pointerEvents: (currentTool === 'pen' || currentTool === 'eraser') ? 'none' : 'auto'
                 }}
                 onClick={(e) => {
@@ -1076,7 +995,6 @@ const BaseLayer: React.FC<BaseLayerProps> = ({ isViewPage = false }) => {
                   }
                 }}
                 onPointerDown={(e) => handlePointerDown(e, obj.id)}
-                onMouseDown={(e) => handleMouseDown(e, obj.id)}
                 onMouseEnter={() => setHoveredObjectId(obj.id)}
                 onMouseLeave={() => setHoveredObjectId(null)}
               >
@@ -1227,30 +1145,26 @@ const BaseLayer: React.FC<BaseLayerProps> = ({ isViewPage = false }) => {
                 {/* 크기조절 핸들 (선택된 객체이고 관리자 페이지이고 크기조절 권한이 있을 때) */}
                 {isSelected && !isViewPage && obj.permissions?.resizable && (
                   <>
-                    {/* 모서리 핸들 */}
+                    {/* 모서리 핸들 - iPad Safari 호환 포인터 이벤트만 사용 */}
                     <div 
                       className="absolute w-3 h-3 bg-blue-600 border-2 border-white rounded-sm cursor-nw-resize shadow-md"
                       style={{ left: -6, top: -6 }}
                       onPointerDown={(e) => handleResizePointerDown(e, 'nw', obj.id)}
-                      onMouseDown={(e) => handleResizeMouseDown(e, 'nw', obj.id)}
                     />
                     <div 
                       className="absolute w-3 h-3 bg-blue-600 border-2 border-white rounded-sm cursor-ne-resize shadow-md"
                       style={{ right: -6, top: -6 }}
                       onPointerDown={(e) => handleResizePointerDown(e, 'ne', obj.id)}
-                      onMouseDown={(e) => handleResizeMouseDown(e, 'ne', obj.id)}
                     />
                     <div 
                       className="absolute w-3 h-3 bg-blue-600 border-2 border-white rounded-sm cursor-sw-resize shadow-md"
                       style={{ left: -6, bottom: -6 }}
                       onPointerDown={(e) => handleResizePointerDown(e, 'sw', obj.id)}
-                      onMouseDown={(e) => handleResizeMouseDown(e, 'sw', obj.id)}
                     />
                     <div 
                       className="absolute w-3 h-3 bg-blue-600 border-2 border-white rounded-sm cursor-se-resize shadow-md"
                       style={{ right: -6, bottom: -6 }}
                       onPointerDown={(e) => handleResizePointerDown(e, 'se', obj.id)}
-                      onMouseDown={(e) => handleResizeMouseDown(e, 'se', obj.id)}
                     />
                     
                     {/* 변 중앙 핸들 */}
@@ -1258,25 +1172,21 @@ const BaseLayer: React.FC<BaseLayerProps> = ({ isViewPage = false }) => {
                       className="absolute w-3 h-3 bg-blue-600 border-2 border-white rounded-sm cursor-n-resize shadow-md"
                       style={{ left: '50%', top: -6, transform: 'translateX(-50%)' }}
                       onPointerDown={(e) => handleResizePointerDown(e, 'n', obj.id)}
-                      onMouseDown={(e) => handleResizeMouseDown(e, 'n', obj.id)}
                     />
                     <div 
                       className="absolute w-3 h-3 bg-blue-600 border-2 border-white rounded-sm cursor-s-resize shadow-md"
                       style={{ left: '50%', bottom: -6, transform: 'translateX(-50%)' }}
                       onPointerDown={(e) => handleResizePointerDown(e, 's', obj.id)}
-                      onMouseDown={(e) => handleResizeMouseDown(e, 's', obj.id)}
                     />
                     <div 
                       className="absolute w-3 h-3 bg-blue-600 border-2 border-white rounded-sm cursor-w-resize shadow-md"
                       style={{ left: -6, top: '50%', transform: 'translateY(-50%)' }}
                       onPointerDown={(e) => handleResizePointerDown(e, 'w', obj.id)}
-                      onMouseDown={(e) => handleResizeMouseDown(e, 'w', obj.id)}
                     />
                     <div 
                       className="absolute w-3 h-3 bg-blue-600 border-2 border-white rounded-sm cursor-e-resize shadow-md"
                       style={{ right: -6, top: '50%', transform: 'translateY(-50%)' }}
                       onPointerDown={(e) => handleResizePointerDown(e, 'e', obj.id)}
-                      onMouseDown={(e) => handleResizeMouseDown(e, 'e', obj.id)}
                     />
                   </>
                 )}
@@ -1306,11 +1216,11 @@ const BaseLayer: React.FC<BaseLayerProps> = ({ isViewPage = false }) => {
                       : (isDragging ? 'grabbing' : (obj.permissions?.movable ? 'grab' : 'default'))
                   ),
                   transition: isDragging ? 'none' : 'all 0.1s ease',
+                  // iPad Safari 최적화: 펜/지우개 도구 사용 시 포인터 이벤트 비활성화
                   pointerEvents: (currentTool === 'pen' || currentTool === 'eraser') ? 'none' : 'auto'
                 }}
                 onClick={(e) => handleObjectClick(e, obj.id)}
                 onPointerDown={(e) => handlePointerDown(e, obj.id)}
-                onMouseDown={(e) => handleMouseDown(e, obj.id)}
                 onMouseEnter={() => setHoveredObjectId(obj.id)}
                 onMouseLeave={() => setHoveredObjectId(null)}
               >
@@ -1330,30 +1240,26 @@ const BaseLayer: React.FC<BaseLayerProps> = ({ isViewPage = false }) => {
                 {/* 크기조절 핸들 (선택된 객체이고 관리자 페이지이고 크기조절 권한이 있을 때) */}
                 {isSelected && !isViewPage && obj.permissions?.resizable && (
                   <>
-                    {/* 모서리 핸들 */}
+                    {/* 모서리 핸들 - iPad Safari 호환 포인터 이벤트만 사용 */}
                     <div 
                       className="absolute w-3 h-3 bg-blue-600 border-2 border-white rounded-sm cursor-nw-resize shadow-md"
                       style={{ left: -6, top: -6 }}
                       onPointerDown={(e) => handleResizePointerDown(e, 'nw', obj.id)}
-                      onMouseDown={(e) => handleResizeMouseDown(e, 'nw', obj.id)}
                     />
                     <div 
                       className="absolute w-3 h-3 bg-blue-600 border-2 border-white rounded-sm cursor-ne-resize shadow-md"
                       style={{ right: -6, top: -6 }}
                       onPointerDown={(e) => handleResizePointerDown(e, 'ne', obj.id)}
-                      onMouseDown={(e) => handleResizeMouseDown(e, 'ne', obj.id)}
                     />
                     <div 
                       className="absolute w-3 h-3 bg-blue-600 border-2 border-white rounded-sm cursor-sw-resize shadow-md"
                       style={{ left: -6, bottom: -6 }}
                       onPointerDown={(e) => handleResizePointerDown(e, 'sw', obj.id)}
-                      onMouseDown={(e) => handleResizeMouseDown(e, 'sw', obj.id)}
                     />
                     <div 
                       className="absolute w-3 h-3 bg-blue-600 border-2 border-white rounded-sm cursor-se-resize shadow-md"
                       style={{ right: -6, bottom: -6 }}
                       onPointerDown={(e) => handleResizePointerDown(e, 'se', obj.id)}
-                      onMouseDown={(e) => handleResizeMouseDown(e, 'se', obj.id)}
                     />
                     
                     {/* 변 중앙 핸들 */}
@@ -1361,25 +1267,21 @@ const BaseLayer: React.FC<BaseLayerProps> = ({ isViewPage = false }) => {
                       className="absolute w-3 h-3 bg-blue-600 border-2 border-white rounded-sm cursor-n-resize shadow-md"
                       style={{ left: '50%', top: -6, transform: 'translateX(-50%)' }}
                       onPointerDown={(e) => handleResizePointerDown(e, 'n', obj.id)}
-                      onMouseDown={(e) => handleResizeMouseDown(e, 'n', obj.id)}
                     />
                     <div 
                       className="absolute w-3 h-3 bg-blue-600 border-2 border-white rounded-sm cursor-s-resize shadow-md"
                       style={{ left: '50%', bottom: -6, transform: 'translateX(-50%)' }}
                       onPointerDown={(e) => handleResizePointerDown(e, 's', obj.id)}
-                      onMouseDown={(e) => handleResizeMouseDown(e, 's', obj.id)}
                     />
                     <div 
                       className="absolute w-3 h-3 bg-blue-600 border-2 border-white rounded-sm cursor-w-resize shadow-md"
                       style={{ left: -6, top: '50%', transform: 'translateY(-50%)' }}
                       onPointerDown={(e) => handleResizePointerDown(e, 'w', obj.id)}
-                      onMouseDown={(e) => handleResizeMouseDown(e, 'w', obj.id)}
                     />
                     <div 
                       className="absolute w-3 h-3 bg-blue-600 border-2 border-white rounded-sm cursor-e-resize shadow-md"
                       style={{ right: -6, top: '50%', transform: 'translateY(-50%)' }}
                       onPointerDown={(e) => handleResizePointerDown(e, 'e', obj.id)}
-                      onMouseDown={(e) => handleResizeMouseDown(e, 'e', obj.id)}
                     />
                   </>
                 )}
@@ -1393,4 +1295,4 @@ const BaseLayer: React.FC<BaseLayerProps> = ({ isViewPage = false }) => {
   );
 };
 
-export default BaseLayer; 
+export default BaseLayer;

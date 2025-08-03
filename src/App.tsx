@@ -15,24 +15,32 @@ const App: React.FC = () => {
   // const [isAuthenticated, setIsAuthenticated] = useState(false);
   // const [password, setPassword] = useState('');
 
-  // 전역 컨텍스트 메뉴 방지 및 터치 길게 누르기 방지
+  // 전역 이벤트 방지 (iPad Safari 호환성 최적화)
   useEffect(() => {
-    // 컨텍스트 메뉴 방지 (우클릭)
+    // 컨텍스트 메뉴 방지 (우클릭 및 터치 길게 누르기)
     const handleContextMenu = (e: Event) => {
-      e.preventDefault();
+      try {
+        e.preventDefault();
+      } catch (error) {
+        // passive event listener에서 실패 시 무시
+        console.debug('preventDefault failed in global context menu:', error);
+      }
       return false;
     };
 
-    // 터치 길게 누르기 방지 (모바일)
+    // 터치 길게 누르기 방지 (iPad Safari 최적화)
     const handleTouchStart = (e: TouchEvent) => {
       if (e.touches.length === 1) {
-        // let touchStartTime = Date.now(); // 현재 사용하지 않음
         let longPressTimer: NodeJS.Timeout;
 
         const preventLongPress = () => {
           longPressTimer = setTimeout(() => {
-            e.preventDefault();
-          }, 500); // 500ms 후 길게 누르기 방지
+            try {
+              e.preventDefault();
+            } catch (error) {
+              // passive event에서 실패 시 무시
+            }
+          }, 300); // iPad Safari 최적화: 300ms로 단축
         };
 
         const clearLongPress = () => {

@@ -34,17 +34,17 @@ const DrawLayer: React.FC<DrawLayerProps> = () => {
   const { drawObjects, settings, isLoading } = useAdminConfigStore();
   const { currentTool, setCurrentTool } = useEditorStore();
 
-  // 웹킷 브라우저 및 iOS 감지 (더 정확한 감지)
+  // iPad Safari 감지 및 최적화 (iPad Safari 터치 이벤트 충돌 해결)
   useEffect(() => {
     const userAgent = navigator.userAgent.toLowerCase();
     const isIOS = /iphone|ipad|ipod/.test(userAgent);
     const isSafari = /safari/.test(userAgent) && !/chrome/.test(userAgent);
     
-    // 실제 iOS/Safari에서만 엄격한 입력 제한 적용
+    // iPad Safari에서만 엄격한 입력 제한 및 충돌 방지 로직 적용
     isWebkitRef.current = isIOS || isSafari;
     
     if (import.meta.env.DEV) {
-      console.log(`🔍 Browser detection: iOS=${isIOS}, Safari=${isSafari}, Strict input filtering=${isWebkitRef.current}`);
+      console.log(`🔍 iPad Safari detection: iOS=${isIOS}, Safari=${isSafari}, Touch optimization=${isWebkitRef.current}`);
     }
   }, []);
 
