@@ -223,6 +223,10 @@ export const secureAnonymousLogin = async (): Promise<void> => {
     
     // 오류가 발생해도 앱이 계속 동작할 수 있도록 함
     // RTDB 접근이 제한될 수 있지만 UI는 정상 표시됨
+    
+    // Auth 오류 시 무시하고 계속 진행
+    console.warn('⚠️ Firebase Auth 오류 무시하고 계속 진행:', error?.code);
+    return;
   }
 };
 
