@@ -3,9 +3,11 @@ import Canvas from '../components/Canvas';
 import ViewFloatingToolbar from '../components/toolbar/ViewFloatingToolbar';
 import ViewVirtualKeyboard from '../components/keyboard/ViewVirtualKeyboard';
 import { useAdminConfigStore } from '../store/adminConfigStore';
+import { auth, database } from '../config/firebase';
+import { usePageBootstrap } from '../hooks/usePageBootstrap';
 
 const ViewPage: React.FC = () => {
-  const { initializeFirebaseListeners, settings } = useAdminConfigStore();
+  const { settings } = useAdminConfigStore();
 
   // 설정이 로드되지 않았을 때 기본값 제공
   const virtualKeyboardEnabled = settings?.view?.virtualKeyboardEnabled ?? true;
@@ -14,16 +16,13 @@ const ViewPage: React.FC = () => {
   const [toolbarVisible, setToolbarVisible] = useState(true);
   const hideTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    // ViewPage에서도 Firebase 리스너 초기화
-    initializeFirebaseListeners();
-    
-    // 컴포넌트 언마운트 시 정리
-    return () => {
-      const { cleanupFirebaseListeners } = useAdminConfigStore.getState();
-      cleanupFirebaseListeners();
-    };
-  }, [initializeFirebaseListeners]);
+  const { ready } = usePageBootstrap({
+    boardId: 'default',
+    auth,
+    rtdb: database,
+    onReady: () => {},
+    onError: () => {},
+  });
 
   // 플로팅 툴바 자동 숨김 관리
   useEffect(() => {
@@ -69,7 +68,7 @@ const ViewPage: React.FC = () => {
     };
   }, []);
 
-  return (
+  return ready ? (
     <div className="w-screen h-screen overflow-hidden relative">
       {/* 메인 캔버스 영역 */}
       <main className="w-full h-full">
@@ -82,7 +81,7 @@ const ViewPage: React.FC = () => {
       {/* ViewPage 전용 가상 키보드 (설정에 따라 표시) */}
       {virtualKeyboardEnabled && <ViewVirtualKeyboard />}
     </div>
-  );
+  ) : null;
 };
 
 export default ViewPage; 

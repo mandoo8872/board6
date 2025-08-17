@@ -1,6 +1,7 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
 import { getAnalytics } from "firebase/analytics";
+import { getAuth, signInAnonymously, deleteUser, User } from 'firebase/auth';
 
 // Firebase 설정 인터페이스 (measurementId는 선택적)
 interface FirebaseConfig {
@@ -71,6 +72,9 @@ if (config.measurementId && typeof window !== 'undefined') {
 // Firebase Realtime Database 초기화
 export const database = getDatabase(app);
 
+// Firebase Auth 초기화
+export const auth = getAuth(app);
+
 // Analytics export (배포환경에서만 사용 가능)
 export { analytics };
 
@@ -87,5 +91,163 @@ console.log(`🔥 Firebase 초기화 완료:`, {
   프로젝트: firebaseEnv.projectId,
   데이터베이스: firebaseEnv.databaseURL
 });
+
+// 익명 계정 참조 저장 (삭제를 위해)
+let currentAnonymousUser: User | null = null;
+
+/**
+ * 보안 익명 로그인 함수
+ * - Firebase Auth 익명 로그인 수행
+ * - 브라우저 종료/새로고침 시 익명 계정 자동 삭제
+ * - Admin/View 페이지에서 공통으로 사용
+ */
+export const secureAnonymousLogin = async (): Promise<void> => {
+  try {
+    if (import.meta.env.DEV) {
+      console.log('🚀 Firebase Auth: 익명 로그인 시작');
+      console.log('🔍 Firebase Auth: 현재 상태 확인 중...');
+    }
+    
+    // 현재 사용자 상태 확인 (이 과정에서 accounts:lookup API 호출됨)
+    if (auth.currentUser) {
+      if (import.meta.env.DEV) {
+        console.log('🔍 Firebase Auth: 기존 사용자 발견:', {
+          uid: auth.currentUser.uid,
+          isAnonymous: auth.currentUser.isAnonymous,
+          providerId: auth.currentUser.providerId
+        });
+      }
+      
+      if (auth.currentUser.isAnonymous) {
+        if (import.meta.env.DEV) {
+          console.log('🔒 Firebase Auth: 이미 익명 로그인된 사용자 존재');
+        }
+        currentAnonymousUser = auth.currentUser;
+        return;
+      }
+    } else {
+      if (import.meta.env.DEV) {
+        console.log('🔍 Firebase Auth: 기존 사용자 없음, 새로운 익명 로그인 시작');
+      }
+    }
+
+    // 익명 로그인 수행
+    if (import.meta.env.DEV) {
+      console.log('🔄 Firebase Auth: signInAnonymously() 호출 중...');
+    }
+    
+    const userCredential = await signInAnonymously(auth);
+    currentAnonymousUser = userCredential.user;
+    
+    if (import.meta.env.DEV) {
+      console.log('🔐 Firebase Auth: 익명 로그인 성공!', {
+        uid: currentAnonymousUser.uid,
+        isAnonymous: currentAnonymousUser.isAnonymous,
+        providerId: currentAnonymousUser.providerId,
+        tokenAvailable: !!currentAnonymousUser
+      });
+    }
+
+    // Auth 상태가 완전히 설정될 때까지 잠시 대기
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // beforeunload 이벤트 리스너 등록 (브라우저 종료/새로고침 감지)
+    const handleBeforeUnload = async () => {
+      if (currentAnonymousUser) {
+        try {
+          // 익명 계정 삭제 (동기적으로 처리하려고 시도)
+          await deleteUser(currentAnonymousUser);
+          if (import.meta.env.DEV) {
+            console.log('🗑️ Firebase Auth: 익명 계정 삭제 완료');
+          }
+        } catch (error) {
+          // 삭제 실패 시 경고만 출력 (앱 흐름 유지)
+          console.warn('⚠️ Firebase Auth: 익명 계정 삭제 실패:', error);
+        }
+      }
+    };
+
+    // 브라우저 종료/새로고침 이벤트 리스너 등록
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    // pagehide 이벤트로 추가 보안 (실제 페이지 떠날 때만)
+    const handlePageHide = async () => {
+      if (currentAnonymousUser) {
+        try {
+          await deleteUser(currentAnonymousUser);
+          if (import.meta.env.DEV) {
+            console.log('🗑️ Firebase Auth: 페이지 완전히 떠남으로 익명 계정 삭제');
+          }
+        } catch (error) {
+          console.warn('⚠️ Firebase Auth: 페이지 숨김 시 계정 삭제 실패:', error);
+        }
+      }
+    };
+
+    // pagehide는 페이지가 실제로 떠날 때만 발생 (탭 전환이나 최소화와 구분)
+    window.addEventListener('pagehide', handlePageHide);
+
+  } catch (error: any) {
+    // 익명 로그인 실패 시 상세한 오류 분석
+    console.error('❌ Firebase Auth: 익명 로그인 실패!', {
+      error: error,
+      code: error?.code,
+      message: error?.message,
+      customData: error?.customData
+    });
+    
+    // 특정 오류 코드별 안내 메시지
+    if (error?.code === 'auth/operation-not-allowed') {
+      console.error('🔧 Firebase Console에서 Anonymous Authentication을 활성화해야 합니다!');
+      console.error('📍 해결 방법: https://console.firebase.google.com/ > 프로젝트 선택 > Authentication > Sign-in method > Anonymous 활성화');
+      console.error('🎯 현재 프로젝트:', firebaseEnv.projectId);
+    } else if (error?.code === 'auth/api-key-not-valid') {
+      console.error('🔑 Firebase API 키가 올바르지 않습니다:', config.apiKey);
+    } else if (error?.code === 'auth/network-request-failed') {
+      console.error('🌐 네트워크 연결 문제가 발생했습니다.');
+    } else {
+      console.error('🚨 예상치 못한 오류:', error?.code || 'UNKNOWN_ERROR');
+      console.error('🔍 전체 오류 내용:', error);
+    }
+    
+    // 현재 인증 상태 확인
+    console.error('🔍 현재 Auth 상태:', {
+      currentUser: auth.currentUser,
+      appName: auth.app.name,
+      config: {
+        apiKey: config.apiKey.substring(0, 10) + '...',
+        authDomain: config.authDomain,
+        projectId: config.projectId
+      }
+    });
+    
+    // 오류가 발생해도 앱이 계속 동작할 수 있도록 함
+    // RTDB 접근이 제한될 수 있지만 UI는 정상 표시됨
+  }
+};
+
+/**
+ * 현재 익명 사용자 정보 반환
+ */
+export const getCurrentAnonymousUser = (): User | null => {
+  return currentAnonymousUser;
+};
+
+/**
+ * 수동으로 익명 계정 삭제 (개발/디버깅용)
+ */
+export const deleteCurrentAnonymousUser = async (): Promise<void> => {
+  if (currentAnonymousUser) {
+    try {
+      await deleteUser(currentAnonymousUser);
+      currentAnonymousUser = null;
+      if (import.meta.env.DEV) {
+        console.log('🗑️ Firebase Auth: 수동 익명 계정 삭제 완료');
+      }
+    } catch (error) {
+      console.warn('⚠️ Firebase Auth: 수동 계정 삭제 실패:', error);
+    }
+  }
+};
 
 export default app;

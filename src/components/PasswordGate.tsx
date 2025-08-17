@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import NumberKeyboard from './NumberKeyboard';
+import { ref, onValue } from 'firebase/database';
+import { database } from '../config/firebase';
 
 interface PasswordGateProps {
   passwordKey: 'ADMIN' | 'VIEW';
@@ -10,9 +12,38 @@ const PasswordGate: React.FC<PasswordGateProps> = ({ passwordKey, onSuccess }) =
   const [password, setPassword] = useState<string[]>(['', '', '', '']);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [showKeyboard, setShowKeyboard] = useState(false);
+  const [correctPassword, setCorrectPassword] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
   
-  // 환경변수에서 패스워드 가져오기
-  const correctPassword = import.meta.env[`VITE_${passwordKey}_PASSWORD`] || '1004';
+  // Firebase에서 직접 패스워드 가져오기
+  useEffect(() => {
+    const passwordType = passwordKey.toLowerCase() as 'admin' | 'view';
+    const passwordRef = ref(database, `settings/admin/passwords/${passwordType}`);
+    
+    const unsubscribe = onValue(passwordRef, (snapshot) => {
+      const dbPassword = snapshot.val();
+      if (dbPassword) {
+        setCorrectPassword(dbPassword);
+        if (import.meta.env.DEV) {
+          console.log(`🔑 ${passwordKey} password loaded from DB:`, dbPassword);
+        }
+      } else {
+        // DB에 값이 없으면 기본값 사용
+        setCorrectPassword('1004');
+        if (import.meta.env.DEV) {
+          console.log(`⚠️ ${passwordKey} password not found in DB, using default: 1004`);
+        }
+      }
+      setIsLoading(false);
+    }, (error) => {
+      console.error(`❌ Failed to load ${passwordKey} password:`, error);
+      // 오류 시 기본값 사용
+      setCorrectPassword('1004');
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [passwordKey]);
 
   // 컴포넌트 마운트 시 첫 번째 입력 칸에 포커스
   useEffect(() => {
@@ -25,6 +56,12 @@ const PasswordGate: React.FC<PasswordGateProps> = ({ passwordKey, onSuccess }) =
   const verifyPassword = (newPassword: string[]) => {
     const enteredPassword = newPassword.join('');
     if (enteredPassword.length === 4) {
+      if (isLoading) {
+        alert('패스워드를 확인하는 중입니다. 잠시만 기다려주세요.');
+        resetPassword();
+        return;
+      }
+      
       if (enteredPassword === correctPassword) {
         onSuccess();
       } else {
@@ -156,6 +193,12 @@ const PasswordGate: React.FC<PasswordGateProps> = ({ passwordKey, onSuccess }) =
         <div className="text-white text-lg sm:text-xl md:text-2xl font-bold mb-8 text-center">
           {passwordKey === 'ADMIN' ? '관리자' : '뷰어'} 비밀번호를 입력하세요
         </div>
+        
+        {isLoading && (
+          <div className="text-white text-sm mb-4 opacity-75">
+            패스워드 확인 중...
+          </div>
+        )}
         
         <div className="flex space-x-3 sm:space-x-4 md:space-x-6">
           {password.map((digit, index) => (

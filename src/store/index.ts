@@ -5,6 +5,7 @@ export { useAdminConfigStore } from './adminConfigStore';
 export { useGridStore } from './gridStore';
 export { useCheckboxStore } from './checkboxStore';
 export { useCellSelectionStore } from './cellSelectionStore';
+export { useUndoRedoStore } from './undoRedoStore';
 
 export type { EditorStore } from './editorStore';
 export type { CanvasStore } from './canvasStore';

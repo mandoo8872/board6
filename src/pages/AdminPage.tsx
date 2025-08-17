@@ -1,43 +1,33 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import Canvas from '../components/Canvas';
 import { default as Toolbar } from '../components/toolbar/Toolbar';
 import ZoomControls from '../components/zoom/ZoomControls';
 import DrawToolSettings from '../components/toolbar/DrawToolSettings';
-import { useAdminConfigStore } from '../store/adminConfigStore';
+import { auth, database } from '../config/firebase';
+import { usePageBootstrap } from '../hooks/usePageBootstrap';
 
 const AdminPage: React.FC = () => {
-  const { initializeFirebaseListeners } = useAdminConfigStore();
+  const { ready } = usePageBootstrap({
+    boardId: 'default',
+    auth,
+    rtdb: database,
+    onReady: () => {},
+    onError: () => {},
+  });
 
-  useEffect(() => {
-    // AdminPage에서 Firebase 리스너 초기화
-    initializeFirebaseListeners();
-    
-    // 컴포넌트 언마운트 시 정리
-    return () => {
-      const { cleanupFirebaseListeners } = useAdminConfigStore.getState();
-      cleanupFirebaseListeners();
-    };
-  }, [initializeFirebaseListeners]);
-
-  return (
-    <div className="w-screen h-screen overflow-hidden flex">
-      {/* 왼쪽 툴바 */}
-      <div className="w-72 h-full bg-slate-100/95 backdrop-blur-sm shadow-xl border-r border-slate-200">
+  return ready ? (
+    <div className={`bg-[#F5F7FA] w-screen h-screen overflow-hidden flex`}>
+      <div className={`w-72 h-full bg-[#1F3A5F] border-r border-[#172A46] shadow-lg`}>
         <Toolbar />
       </div>
-      
-      {/* 메인 캔버스 영역 - 나머지 공간 전체 사용 */}
-      <main className="flex-1 h-full relative">
+      <main className={`flex-1 h-full relative bg-[#F5F7FA]`}>
+        <div className="pointer-events-none absolute inset-4 rounded-xl ring-1 ring-white/70 shadow-[0_8px_24px_rgba(31,58,95,0.08)]" />
         <Canvas isViewPage={false} />
-        
-        {/* 필기/지우개 도구 설정 */}
         <DrawToolSettings />
       </main>
-      
-      {/* 확대/축소 컨트롤 */}
       <ZoomControls />
     </div>
-  );
+  ) : null;
 };
 
 export default AdminPage; 

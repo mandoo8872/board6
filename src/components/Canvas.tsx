@@ -174,18 +174,15 @@ const Canvas: React.FC<CanvasProps> = ({ isViewPage = false }) => {
   const containerWidth = containerRef.current?.clientWidth || 0;
   const containerHeight = containerRef.current?.clientHeight || 0;
 
-  // 스크롤 영역 계산 - 확대된 캔버스 전체를 스크롤할 수 있도록 여백 추가
-  const scrollPadding = 200; // 캔버스 주변 여백
-  
   // 캔버스가 컨테이너보다 클 때만 여백 추가, 작을 때는 컨테이너 크기 사용
   const needsHorizontalScroll = scaledWidth > containerWidth;
   const needsVerticalScroll = scaledHeight > containerHeight;
   
   const scrollAreaWidth = needsHorizontalScroll 
-    ? scaledWidth + scrollPadding * 2 
+    ? scaledWidth 
     : containerWidth;
   const scrollAreaHeight = needsVerticalScroll 
-    ? scaledHeight + scrollPadding * 2 
+    ? scaledHeight 
     : containerHeight;
 
   // 스케일에 따른 그리드 표시 여부 결정
@@ -367,7 +364,7 @@ const Canvas: React.FC<CanvasProps> = ({ isViewPage = false }) => {
           zIndex: 10000,
           pointerEvents: (currentTool === 'pen' || currentTool === 'eraser') ? 'auto' : 'none',
         }}>
-          <DrawLayer key={`${finalScale}-${viewOffset.x}-${viewOffset.y}`} isViewPage={isViewPage} />
+          <DrawLayer isViewPage={isViewPage} />
         </div>
       </div>
 

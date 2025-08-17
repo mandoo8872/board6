@@ -1,6 +1,22 @@
 // 기본 도구 타입
 export type Tool = 'select' | 'text' | 'checkbox' | 'image' | 'pen' | 'eraser';
 
+// Undo/Redo Snapshot 타입 (Draw 상태 제외)
+export interface CanvasSnapshot {
+  textObjects: TextObject[];
+  imageObjects: ImageObject[];
+  floorImage: FloorImage | null;
+  // UI 인지 가능한 편집 상태 포함
+  selectedObjectId?: string | null;
+  selectedCellIds?: string[];
+  timestamp: number;
+}
+
+export interface UndoRedoState {
+  history: CanvasSnapshot[];
+  cursor: number;
+}
+
 // 캔버스 관련 타입 정의
 export interface CanvasProps {
   isViewPage: boolean;
@@ -173,6 +189,11 @@ export interface AdminSettings {
     backgroundColor: string;
     maxRows: number;
     maxCols: number;
+  };
+  // 페이지별 패스워드 설정
+  passwords: {
+    admin: string;
+    view: string;
   };
 }
 

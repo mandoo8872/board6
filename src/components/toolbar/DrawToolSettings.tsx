@@ -94,7 +94,7 @@ const DrawToolSettings: React.FC = () => {
             <div className="text-xs text-gray-500 mt-1">
               {usePerfectFreehand 
                 ? '✨ 압력 감지 및 부드러운 곡선 활성화' 
-                : '📝 기본 선 렌더링 (빠른 성능)'}
+                : '⚡ 기본 선 렌더링 (빠른 성능)'}
             </div>
           </div>
         )}

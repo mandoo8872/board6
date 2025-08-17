@@ -113,7 +113,7 @@ export const perf = new PerformanceMonitor();
 /**
  * 디바운스된 함수 실행 시간 측정
  */
-export function debounceWithPerf<T extends (...args: any[]) => any>(
+export function debounceWithPerf<T extends (...args: unknown[]) => unknown>(
   fn: T,
   delay: number,
   label?: string
@@ -137,15 +137,49 @@ export function debounceWithPerf<T extends (...args: any[]) => any>(
 }
 
 /**
- * Firebase 호출 성능 측정 래퍼
+ * 쓰로틀(leading/trailing) + 성능 로깅
  */
-export async function measureFirebaseCall<T>(
-  operation: string,
-  fn: () => Promise<T>
-): Promise<T> {
-  if (!isDevelopment) return fn();
-  
-  return perf.measureAsync(`🔥 Firebase: ${operation}`, fn);
+export function throttleWithPerf<T extends (...args: any[]) => any>(
+  fn: T,
+  interval: number,
+  label?: string
+): T {
+  let lastExecMs = 0;
+  let timeoutId: NodeJS.Timeout | null = null;
+  let lastArgs: Parameters<T> | null = null;
+
+  const invoke = (args: Parameters<T>) => {
+    if (process.env.NODE_ENV === 'development') {
+      perf.measure(label || 'Throttled function', () => fn(...args));
+    } else {
+      (fn as (...a: Parameters<T>) => unknown)(...args);
+    }
+  };
+
+  return ((...args: Parameters<T>) => {
+    const now = Date.now();
+    const remaining = interval - (now - lastExecMs);
+    lastArgs = args;
+
+    if (remaining <= 0) {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+      lastExecMs = now;
+      invoke(args);
+    } else if (!timeoutId) {
+      // trailing 보장
+      timeoutId = setTimeout(() => {
+        lastExecMs = Date.now();
+        timeoutId = null;
+        if (lastArgs) invoke(lastArgs);
+      }, remaining);
+    }
+  }) as T;
 }
 
-export default perf; 
+/**
+ * Firebase 호출 성능 측정 래퍼
+ */
+export {};

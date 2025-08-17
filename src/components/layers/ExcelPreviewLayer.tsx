@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAdminConfigStore } from '../../store';
+import { ChartBar } from 'phosphor-react';
 
 // 간단한 파싱 함수 (Toolbar 컴포넌트와 동일)
 const parseExcelData = (data: string) => {
@@ -131,7 +132,8 @@ const ExcelPreviewLayer: React.FC = () => {
           boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
         }}
       >
-        📊 미리보기: {parsedData.length}행 × {Math.max(...parsedData.map(row => row.length))}열
+        <ChartBar size={16} weight="duotone" color="#302929" className="mr-1 inline" />
+        미리보기: {parsedData.length}행 × {Math.max(...parsedData.map(row => row.length))}열
       </div>
     </div>
   );

@@ -17,6 +17,9 @@ const DrawLayer: React.FC<DrawLayerProps> = () => {
   const activePointerRef = useRef<number | null>(null); // 활성 포인터 ID 추적
   const isWebkitRef = useRef<boolean>(false); // 웹킷 브라우저 감지
   const touchRejectTimeoutRef = useRef<NodeJS.Timeout | null>(null); // 터치 거부 타이머
+  const isMountedRef = useRef<boolean>(true); // 컴포넌트 마운트 상태 추적
+  const renderTimeoutRef = useRef<NodeJS.Timeout | null>(null); // 렌더링 타이머 추적
+  const renderAnimationRef = useRef<number | null>(null); // 렌더링 애니메이션 프레임 추적
   
   const { 
     currentStroke, 
@@ -138,7 +141,7 @@ const DrawLayer: React.FC<DrawLayerProps> = () => {
   // Canvas 초기화
   const initializeCanvas = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || !isMountedRef.current) return;
 
     const parent = canvas.parentElement;
     if (!parent) return;
@@ -155,13 +158,14 @@ const DrawLayer: React.FC<DrawLayerProps> = () => {
       }
       
       // 캔버스 크기 변경 후 렌더링 예약
-      if (!renderQueueRef.current) {
+      if (!renderQueueRef.current && isMountedRef.current) {
         renderQueueRef.current = true;
-        requestAnimationFrame(() => {
-          if (renderQueueRef.current && !isLoading) {
+        renderAnimationRef.current = requestAnimationFrame(() => {
+          if (renderQueueRef.current && !isLoading && isMountedRef.current) {
             renderAll();
             renderQueueRef.current = false;
           }
+          renderAnimationRef.current = null;
         });
       }
     }
@@ -239,6 +243,8 @@ const DrawLayer: React.FC<DrawLayerProps> = () => {
       }
       return;
     }
+
+    // 컴포넌트가 언마운트되었지만 canvas가 유효하면 렌더링 계속 진행
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.lineCap = 'round';
@@ -443,6 +449,8 @@ const DrawLayer: React.FC<DrawLayerProps> = () => {
     const coords = getCanvasCoordinates(e.clientX, e.clientY);
     
     if (currentTool === 'pen') {
+      // 펜 스트로크 시작
+      
       startStroke();
       
       // 압력과 기울기 데이터 추출 (iPhone에서는 기본값 사용)
@@ -453,9 +461,7 @@ const DrawLayer: React.FC<DrawLayerProps> = () => {
       addPoint(coords.x, coords.y, pressure, tiltX, tiltY);
       renderAll();
       
-      if (import.meta.env.DEV && isIPhone) {
-        console.log(`📱 iPhone: Pen stroke started with ${e.pointerType} at (${coords.x}, ${coords.y})`);
-      }
+      // 포인트 추가됨
     } else if (currentTool === 'eraser') {
       // 지우개 드래그 시작
       isErasingRef.current = true;
@@ -467,7 +473,7 @@ const DrawLayer: React.FC<DrawLayerProps> = () => {
     }
     
     if (import.meta.env.DEV) {
-      console.log(`✏️ Drawing started with ${e.pointerType} (ID: ${e.pointerId})`);
+              console.log(`✨ Drawing started with ${e.pointerType} (ID: ${e.pointerId})`);
     }
   }, [currentTool, getCanvasCoordinates, startStroke, addPoint, renderAll, eraseAtPoint, isValidInputType]);
 
@@ -493,6 +499,8 @@ const DrawLayer: React.FC<DrawLayerProps> = () => {
       
       addPoint(coords.x, coords.y, pressure, tiltX, tiltY);
       renderAll();
+      
+      // 그리기 진행 중
     } else if (currentTool === 'eraser' && isErasingRef.current) {
       // 지우개는 드래그 중일 때만 작동
       e.preventDefault();
@@ -514,18 +522,22 @@ const DrawLayer: React.FC<DrawLayerProps> = () => {
     
     // 필기 도구 처리
     if (isDrawing && currentTool === 'pen') {
+      // 스냅샷 캡처 (상태 업데이트 타이밍 차이로 인한 유실 방지)
+      const strokePointsSnapshot = [...currentStroke];
+      const pressureSnapshot = currentPressureStroke.map(p => ({ ...p }));
+
       endStroke();
       
-      if (currentStroke.length >= 4) {
+      if (strokePointsSnapshot.length >= 4) {
         // 입력 타입 결정
         const inputType: 'pen' | 'touch' | 'mouse' = e.pointerType === 'pen' ? 'pen' : 
                          e.pointerType === 'touch' ? 'touch' : 'mouse';
         
         // 압력 데이터 추출
-        const pressureData = currentPressureStroke.map(point => point.pressure || 0.5);
+        const pressureData = pressureSnapshot.map(point => point.pressure || 0.5);
         
         const drawObject = {
-          points: currentStroke,
+          points: strokePointsSnapshot,
           color: penColor,
           width: penWidth,
           createdAt: new Date().toISOString(),
@@ -539,7 +551,7 @@ const DrawLayer: React.FC<DrawLayerProps> = () => {
         try {
           await lwwCreateDrawObject(drawObject);
           if (import.meta.env.DEV) {
-            console.log(`✏️ Stroke saved: ${inputType} input, ${pressureData.length} points, perfect-freehand: ${usePerfectFreehand}`);
+            console.log(`💾 Stroke saved: ${inputType} input, ${pressureData.length} points, perfect-freehand: ${usePerfectFreehand}`);
           }
         } catch (error) {
           console.error('❌ DrawLayer: Failed to save stroke:', error);
@@ -572,7 +584,7 @@ const DrawLayer: React.FC<DrawLayerProps> = () => {
     }
     
     if (import.meta.env.DEV) {
-      console.log(`✏️ Drawing ended with ${e.pointerType} (ID: ${e.pointerId})`);
+              console.log(`🔚 Drawing ended with ${e.pointerType} (ID: ${e.pointerId})`);
     }
   }, [isDrawing, currentTool, currentStroke, endStroke, penColor, penWidth, clearCurrentStroke, renderAll, scheduleAutoSwitch]);
 
@@ -608,22 +620,43 @@ const DrawLayer: React.FC<DrawLayerProps> = () => {
     initializeCanvas();
     
     const handleResize = () => {
-      setTimeout(initializeCanvas, 100);
+      if (isMountedRef.current) {
+        setTimeout(initializeCanvas, 100);
+      }
     };
     
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      // 마운트 상태 업데이트
+      isMountedRef.current = false;
+      // pending된 애니메이션 프레임 취소
+      if (renderAnimationRef.current) {
+        cancelAnimationFrame(renderAnimationRef.current);
+        renderAnimationRef.current = null;
+      }
+      // 렌더링 큐 초기화
+      renderQueueRef.current = false;
+    };
   }, [initializeCanvas]);
 
   // 데이터 로딩 완료 후 렌더링
   useEffect(() => {
-    if (!isLoading) {
+    if (!isLoading && isMountedRef.current) {
       // 로딩 완료 후 약간 지연을 두고 렌더링
-      const timeoutId = setTimeout(() => {
-        renderAll();
+      renderTimeoutRef.current = setTimeout(() => {
+        if (isMountedRef.current) {
+          renderAll();
+        }
+        renderTimeoutRef.current = null;
       }, 100);
       
-      return () => clearTimeout(timeoutId);
+      return () => {
+        if (renderTimeoutRef.current) {
+          clearTimeout(renderTimeoutRef.current);
+          renderTimeoutRef.current = null;
+        }
+      };
     }
   }, [isLoading]);
 
@@ -656,15 +689,29 @@ const DrawLayer: React.FC<DrawLayerProps> = () => {
 
   useEffect(() => {
     return () => {
+      // 마운트 상태 업데이트
+      isMountedRef.current = false;
+      
+      // 모든 타이머와 애니메이션 프레임 정리
       if (autoSwitchTimeoutRef.current) {
         clearTimeout(autoSwitchTimeoutRef.current);
         autoSwitchTimeoutRef.current = null;
       }
-      
       if (touchRejectTimeoutRef.current) {
         clearTimeout(touchRejectTimeoutRef.current);
         touchRejectTimeoutRef.current = null;
       }
+      if (renderTimeoutRef.current) {
+        clearTimeout(renderTimeoutRef.current);
+        renderTimeoutRef.current = null;
+      }
+      if (renderAnimationRef.current) {
+        cancelAnimationFrame(renderAnimationRef.current);
+        renderAnimationRef.current = null;
+      }
+      
+      // 렌더링 큐 초기화
+      renderQueueRef.current = false;
       
       // 활성 포인터 초기화
       activePointerRef.current = null;
