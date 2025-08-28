@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { CaretLeft, CaretRight } from 'phosphor-react';
 import { useEditorStore, useAdminConfigStore } from '../../store';
 import { useCellSelectionStore } from '../../store/cellSelectionStore';
 
@@ -27,7 +28,12 @@ import {
 
 import type { SafeSettings } from './types';
 
-const ToolbarRefactored: React.FC = () => {
+interface ToolbarProps {
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
+}
+
+const ToolbarRefactored: React.FC<ToolbarProps> = ({ collapsed = false, onToggleCollapse }) => {
   // Store hooks
   const { 
     textObjects, 
@@ -162,17 +168,31 @@ const ToolbarRefactored: React.FC = () => {
         }
       }}
     >
-      {/* 헤더 */}
-      <div className="px-4 py-3 border-b border-[#0f1e33] bg-[#1F3A5F]">
-        <h1 className="text-lg font-bold text-[#F1F5F9] flex items-center gap-2">
-          <img src="/ci.png" alt="현대글로비스ci" className="h-5" />
-          보드관리자
-        </h1>
+      {/* 헤더: 좌측 접기/펼치기 버튼 */}
+      <div className="px-2 py-3 border-b border-[#0f1e33] bg-[#1F3A5F] flex items-center justify-between">
+        {!collapsed && (
+          <h1 className="text-lg font-bold text-[#F1F5F9] flex items-center gap-2">
+            <img src="/ci.png" alt="현대글로비스ci" className="h-5" />
+            보드관리자
+          </h1>
+        )}
+        <button
+          onClick={onToggleCollapse}
+          className="ml-2 shrink-0 w-7 h-7 rounded bg-[#264266] text-white flex items-center justify-center hover:bg-[#2c4b73]"
+          aria-label="툴바 접기/펼치기"
+        >
+          {collapsed ? (
+            <CaretRight size={18} weight="bold" />
+          ) : (
+            <CaretLeft size={18} weight="bold" />
+          )}
+        </button>
       </div>
 
-      {/* 스크롤 가능한 콘텐츠 영역 */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar">
-        <div className={`p-3 space-y-3`}>
+      {/* 스크롤 가능한 콘텐츠 영역 (접힘 시 숨김) */}
+      {!collapsed && (
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
+          <div className={`p-3 space-y-3`}>
           
           {/* 1. 메인 도구 */}
           <MainToolsSection
@@ -245,8 +265,9 @@ const ToolbarRefactored: React.FC = () => {
             updateSettings={updateSettings}
             onImageUpload={actions.handleImageUpload}
           />
-                      </div>
-                    </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -18,7 +18,7 @@ const Canvas: React.FC<CanvasProps> = ({ isViewPage = false }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const [autoScale, setAutoScale] = useState(0.15); // 초기 로딩용 임시값
-  const { zoom, viewOffset, setZoom, zoomAtPoint, currentTool } = useEditorStore();
+  const { zoom, viewOffset, setZoom, setViewOffset, zoomAtPoint, currentTool } = useEditorStore();
   const { floorImage, settings } = useAdminConfigStore();
 
   // 설정이 로드되지 않았을 때 기본값 제공
@@ -36,6 +36,79 @@ const Canvas: React.FC<CanvasProps> = ({ isViewPage = false }) => {
     
     // 일반 휠 이벤트는 스크롤로 처리 (확대/축소 하지 않음)
     // 기본 스크롤 동작 허용
+  }, []);
+
+  // 모바일 두 손가락 핀치/팬 제스처 상태
+  const gestureRef = useRef<{
+    active: boolean;
+    startDistance: number;
+    startCenter: { x: number; y: number } | null;
+    startZoom: number;
+    startOffset: { x: number; y: number };
+  }>({ active: false, startDistance: 0, startCenter: null, startZoom: 1, startOffset: { x: 0, y: 0 } });
+
+  const isTouchDevice = () => {
+    if (typeof window === 'undefined') return false;
+    return ('ontouchstart' in window) || (navigator.maxTouchPoints ?? 0) > 0;
+  };
+
+  const getTouchCenterAndDistance = (touches: TouchList) => {
+    const t1 = touches[0];
+    const t2 = touches[1];
+    const center = { x: (t1.clientX + t2.clientX) / 2, y: (t1.clientY + t2.clientY) / 2 };
+    const dx = t2.clientX - t1.clientX;
+    const dy = t2.clientY - t1.clientY;
+    const distance = Math.hypot(dx, dy);
+    return { center, distance };
+  };
+
+  const handleTouchStartGesture = useCallback((e: React.TouchEvent) => {
+    if (isViewPage) return; // 어드민에서만
+    if (!isTouchDevice()) return;
+    if (e.touches.length === 2) {
+      // 핀치 제스처 시작
+      const { center, distance } = getTouchCenterAndDistance(e.nativeEvent.touches);
+      gestureRef.current.active = true;
+      gestureRef.current.startDistance = Math.max(1, distance);
+      gestureRef.current.startCenter = center;
+      gestureRef.current.startZoom = zoom;
+      gestureRef.current.startOffset = { x: viewOffset.x, y: viewOffset.y };
+      try { e.preventDefault(); } catch {}
+    }
+  }, [isViewPage, zoom, viewOffset]);
+
+  const handleTouchMoveGesture = useCallback((e: React.TouchEvent) => {
+    if (!gestureRef.current.active) return;
+    if (!containerRef.current) return;
+    if (e.touches.length !== 2) return;
+    const { center, distance } = getTouchCenterAndDistance(e.nativeEvent.touches);
+    const startCenter = gestureRef.current.startCenter;
+    if (!startCenter) return;
+
+    // 새로운 줌 계산 (클램프 적용)
+    const scaleRatio = Math.max(0.2, distance / Math.max(1, gestureRef.current.startDistance));
+    const targetZoom = Math.min(5.0, Math.max(0.05, gestureRef.current.startZoom * scaleRatio));
+
+    // 팬: 화면 좌표의 중심 이동을 캔버스 오프셋으로 변환 (스케일 보정)
+    const finalScale = autoScale * targetZoom;
+    const deltaX = center.x - startCenter.x;
+    const deltaY = center.y - startCenter.y;
+    const newOffsetX = gestureRef.current.startOffset.x + (deltaX / (finalScale || 1));
+    const newOffsetY = gestureRef.current.startOffset.y + (deltaY / (finalScale || 1));
+
+    // 상태 적용 (줌 먼저, 그 다음 오프셋)
+    setZoom(targetZoom);
+    setViewOffset({ x: newOffsetX, y: newOffsetY });
+
+    try { e.preventDefault(); } catch {}
+  }, [autoScale, setZoom, setViewOffset]);
+
+  const handleTouchEndGesture = useCallback((e: React.TouchEvent) => {
+    if (!gestureRef.current.active) return;
+    if (e.touches.length < 2) {
+      gestureRef.current.active = false;
+      gestureRef.current.startCenter = null;
+    }
   }, []);
 
   // zoom이 비정상적으로 작으면 1.0으로 리셋
@@ -236,6 +309,9 @@ const Canvas: React.FC<CanvasProps> = ({ isViewPage = false }) => {
     <div 
       ref={containerRef}
       onWheel={handleWheel}
+      onTouchStart={handleTouchStartGesture}
+      onTouchMove={handleTouchMoveGesture}
+      onTouchEnd={handleTouchEndGesture}
       style={{
         position: 'relative',
         width: '100%',
